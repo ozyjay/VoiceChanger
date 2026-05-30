@@ -2,10 +2,13 @@
 name = "voicechanger"
 version = "0.1.0"
 description = "Local Open Day demo for voice effects and FFT visualisation"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<3.13"
 authors = [{ name = "Your Name" }]
 dependencies = [
     "PySide6",
     "numpy",
     "sounddevice",
 ]
+
+[tool.poetry]
+package-mode = false

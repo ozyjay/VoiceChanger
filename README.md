@@ -25,32 +25,39 @@ src/
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.12.13 via pyenv
 - PySide6
 - NumPy
 - sounddevice
 
-The project has a standard `pyproject.toml`, but no lockfile or project virtual environment is currently checked in.
+The project has a standard `pyproject.toml`, a `poetry.lock` file, and a `.python-version` file for pyenv. Poetry creates its virtual environment outside the repo by default.
+
+Use the pinned Python version:
+
+```bash
+pyenv install 3.12.13
+pyenv local 3.12.13
+python --version
+```
 
 ## Useful Commands
 
-Compile-check the Python files:
+Install dependencies:
 
 ```bash
-python3 -m py_compile src/main.py src/gui.py
+./scripts/setup.sh
+```
+
+Run tests and compile checks:
+
+```bash
+./scripts/test.sh
 ```
 
 Run the GUI:
 
 ```bash
-python3 src/main.py
-```
-
-If using Poetry later:
-
-```bash
-poetry install
-poetry run python src/main.py
+./scripts/run.sh
 ```
 
 ## Development Notes

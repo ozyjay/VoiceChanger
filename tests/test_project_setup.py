@@ -153,7 +153,16 @@ class ProjectSetupTests(unittest.TestCase):
             metadata = tomllib.load(pyproject)
 
         self.assertIn("project", metadata)
-        self.assertNotIn("poetry", metadata.get("tool", {}))
+        self.assertEqual(metadata.get("tool", {}).get("poetry"), {"package-mode": False})
+
+    def test_python_requirement_matches_pyenv_pin(self):
+        with (ROOT / "pyproject.toml").open("rb") as pyproject:
+            project = tomllib.load(pyproject)["project"]
+
+        pinned_python = (ROOT / ".python-version").read_text().strip()
+        major, minor, _patch = pinned_python.split(".")
+
+        self.assertEqual(project["requires-python"], f">={major}.{minor},<{major}.{int(minor) + 1}")
 
     def test_runtime_dependencies_match_imports(self):
         with (ROOT / "pyproject.toml").open("rb") as pyproject:

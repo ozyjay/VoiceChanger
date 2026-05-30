@@ -15,14 +15,28 @@ Use these rules when working in the VoiceChanger repository.
 - This is a PySide6 voice effects demo.
 - `src/main.py` is the current runnable entry point.
 - `src/gui.py` is a compatibility shim and should not be deleted unless explicitly requested.
-- The app currently has UI controls but no recording, playback, effects, or visualisation logic.
+- The app currently has basic recording/playback wiring and early placeholder effects.
+- Python is pinned with pyenv via `.python-version`.
+- Dependencies are managed with Poetry.
 
 ## Verification
 
 After Python edits, run:
 
 ```bash
-python3 -m py_compile src/main.py src/gui.py
+./scripts/test.sh
+```
+
+To install dependencies:
+
+```bash
+./scripts/setup.sh
+```
+
+To run the app:
+
+```bash
+./scripts/run.sh
 ```
 
 If asked to inspect only, do not edit files unless a clear fix is requested.

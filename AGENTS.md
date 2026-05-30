@@ -28,18 +28,20 @@ The current code is only a GUI scaffold, so prefer incremental implementation ov
 After Python edits, run:
 
 ```bash
-python3 -m py_compile src/main.py src/gui.py
+./scripts/test.sh
 ```
 
 If GUI behaviour changes, also run the app manually when practical:
 
 ```bash
-python3 src/main.py
+./scripts/run.sh
 ```
 
 ## Known Project Notes
 
 - `src/main.py` is currently the runnable entry point.
 - `src/gui.py` currently exposes `MainWindow` for compatibility.
-- `pyproject.toml` is present, but no `poetry.lock` or project `.venv` is currently committed.
-- The dependency `mpllib` may be a typo or placeholder; check before relying on it.
+- Python is pinned by `.python-version` for pyenv.
+- Dependencies are managed by Poetry using `pyproject.toml` and `poetry.lock`.
+- Poetry stores the project virtual environment outside the repo by default.
+- Use `./scripts/setup.sh` to prepare the local environment.
