@@ -1,11 +1,11 @@
-[tool.poetry]
-name = "Open Day Demo"
+[project]
+name = "voicechanger"
 version = "0.1.0"
 description = "Local Open Day demo for voice effects and FFT visualisation"
-authors = ["Your Name"]
-
-[tool.poetry.dependencies]
-python = "^3.11"
-PySide6 = "*"
-mpllib = "*"
-numpy = "*"
+requires-python = ">=3.11,<4.0"
+authors = [{ name = "Your Name" }]
+dependencies = [
+    "PySide6",
+    "numpy",
+    "sounddevice",
+]

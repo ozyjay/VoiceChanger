@@ -4,14 +4,16 @@ Local Open Day demo for recording, transforming, playing, and visualising voice 
 
 ## Current Status
 
-This project is currently a PySide6 GUI shell. It has:
+This project is currently a PySide6 GUI demo in early implementation. It has:
 
 - A main window titled `Open Day Voice Effects Demo`
 - Buttons for recording, playing the original audio, and playing filtered audio
 - A dropdown of planned effects: Normal, Chipmunk, Giant, Robot, Radio, Alien, Echo
+- Basic microphone recording and playback through `sounddevice`
+- Early placeholder audio effects, with Echo partially implemented
 - A placeholder area for future waveform and FFT visualisation
 
-The audio recording, playback, effects, and visualisation logic are not implemented yet.
+The visualisation logic and most effects are not implemented yet.
 
 ## Project Layout
 
@@ -26,8 +28,9 @@ src/
 - Python 3.11+
 - PySide6
 - NumPy
+- sounddevice
 
-The project has a `pyproject.toml` in Poetry format, but no lockfile or project virtual environment is currently checked in.
+The project has a standard `pyproject.toml`, but no lockfile or project virtual environment is currently checked in.
 
 ## Useful Commands
 
