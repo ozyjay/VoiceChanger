@@ -1,0 +1,11 @@
+[tool.poetry]
+name = "Open Day Demo"
+version = "0.1.0"
+description = "Local Open Day demo for voice effects and FFT visualisation"
+authors = ["Your Name"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+PySide6 = "*"
+mpllib = "*"
+numpy = "*"
