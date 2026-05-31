@@ -1,0 +1,96 @@
+<h2>Which UX direction should VoiceChanger lean into?</h2>
+<p class="subtitle">All options keep the PySide6 desktop app and the record/play/effect/visualise workflow. Pick the vibe that would make the Open Day demo feel most alive.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:220px;background:#111827;color:#f9fafb;padding:18px;display:grid;grid-template-rows:auto 1fr auto;gap:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:20px;">Voice Lab</strong>
+          <span style="background:#22c55e;color:#052e16;border-radius:999px;padding:5px 10px;font-size:12px;">Ready</span>
+        </div>
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:14px;">
+          <div style="background:#1f2937;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+            <div style="height:44px;background:#ef4444;border-radius:999px;"></div>
+            <div style="height:30px;background:#374151;border-radius:6px;"></div>
+            <div style="height:30px;background:#374151;border-radius:6px;"></div>
+            <div style="height:30px;background:#2563eb;border-radius:6px;"></div>
+          </div>
+          <div style="background:#0f172a;border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="background:#1d4ed8;border-radius:6px;"></div>
+            <div style="background:#475569;border-radius:6px;"></div>
+            <div style="background:#f59e0b;border-radius:6px;"></div>
+            <div style="background:#dc2626;border-radius:6px;"></div>
+          </div>
+        </div>
+        <div style="height:14px;background:#22c55e;border-radius:999px;width:65%;"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Hands-on Voice Lab</h3>
+      <p>Looks like a friendly experiment station: clear steps, strong status, visible audio science, easy for helpers to explain.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:220px;background:#f8fafc;color:#0f172a;padding:18px;display:grid;grid-template-rows:auto 1fr;gap:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:20px;">Try Your Voice</strong>
+          <span style="background:#e0f2fe;color:#075985;border-radius:999px;padding:5px 10px;font-size:12px;">Step 2 of 4</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:14px;">
+          <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:14px;">
+            <div style="height:40px;background:#ef4444;border-radius:8px;margin-bottom:12px;"></div>
+            <div style="height:34px;background:#e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+            <div style="height:34px;background:#e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+            <div style="height:34px;background:#38bdf8;border-radius:6px;"></div>
+          </div>
+          <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:9px;">
+            <div style="height:22px;background:#cbd5e1;border-radius:6px;width:80%;"></div>
+            <div style="height:22px;background:#bae6fd;border-radius:6px;width:95%;"></div>
+            <div style="height:22px;background:#cbd5e1;border-radius:6px;width:70%;"></div>
+            <div style="height:80px;background:#e0f2fe;border-radius:6px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Guided Demo Kiosk</h3>
+      <p>Feels approachable for visitors: big sequential actions, less technical noise, friendly prompts, harder to get stuck.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:220px;background:#0b1020;color:#e5e7eb;padding:18px;display:grid;grid-template-rows:auto 1fr;gap:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:20px;">Voice FX Deck</strong>
+          <span style="background:#f97316;color:#431407;border-radius:999px;padding:5px 10px;font-size:12px;">Live</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div style="background:#18181b;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="height:78px;background:#ef4444;border-radius:50%;"></div>
+            <div style="height:24px;background:#27272a;border-radius:6px;"></div>
+          </div>
+          <div style="background:#18181b;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="height:28px;background:#f97316;border-radius:6px;"></div>
+            <div style="height:28px;background:#22c55e;border-radius:6px;"></div>
+            <div style="height:28px;background:#3b82f6;border-radius:6px;"></div>
+            <div style="height:28px;background:#a855f7;border-radius:6px;"></div>
+          </div>
+          <div style="background:#18181b;border-radius:8px;padding:12px;display:flex;align-items:end;gap:5px;">
+            <div style="height:40%;background:#22c55e;border-radius:4px;flex:1;"></div>
+            <div style="height:70%;background:#f97316;border-radius:4px;flex:1;"></div>
+            <div style="height:55%;background:#3b82f6;border-radius:4px;flex:1;"></div>
+            <div style="height:85%;background:#ef4444;border-radius:4px;flex:1;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Performance FX Console</h3>
+      <p>More theatrical: big record button, effect pads, “showtime” visuals. Exciting, but a bit less explanatory.</p>
+    </div>
+  </div>
+</div>

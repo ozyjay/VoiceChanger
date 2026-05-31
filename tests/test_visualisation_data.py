@@ -65,6 +65,66 @@ class VisualisationDataTests(unittest.TestCase):
         self.assertIsNone(data.processed)
         self.assertAlmostEqual(data.original.dominant_frequency, 220, delta=2)
 
+    def test_low_amplitude_audio_uses_honest_zoomed_waveform_limit(self):
+        samplerate = 12000
+        original = sine_wave(220, samplerate=samplerate, amplitude=0.08)
+        processed = original * 0.5
+
+        data = build_visualisation_data(original, processed, samplerate, "Quiet")
+
+        self.assertGreater(data.waveform_limit, 0.08)
+        self.assertLess(data.waveform_limit, 0.12)
+        self.assertGreater(data.display_gain, 8.0)
+
+    def test_original_and_processed_share_waveform_limit(self):
+        samplerate = 12000
+        original = sine_wave(220, samplerate=samplerate, amplitude=0.08)
+        processed = sine_wave(220, samplerate=samplerate, amplitude=0.18)
+
+        data = build_visualisation_data(original, processed, samplerate, "Louder")
+
+        self.assertAlmostEqual(data.waveform_limit, data.processed.waveform_limit)
+        self.assertAlmostEqual(data.waveform_limit, data.original.waveform_limit)
+        self.assertGreater(data.waveform_limit, 0.18)
+        self.assertLess(data.waveform_limit, 0.25)
+
+    def test_difference_waveform_highlights_processed_change(self):
+        samplerate = 12000
+        original = sine_wave(300, samplerate=samplerate, amplitude=0.3)
+        processed = apply_effect(original, "Robot", samplerate=samplerate)
+
+        data = build_visualisation_data(original, processed, samplerate, "Robot")
+
+        self.assertEqual(len(data.difference_waveform_amplitudes), len(data.original.waveform_amplitudes))
+        self.assertGreater(float(np.max(np.abs(data.difference_waveform_amplitudes))), 0.02)
+
+    def test_fft_display_magnitudes_lift_quieter_harmonics(self):
+        samplerate = 12000
+        original = sine_wave(400, samplerate=samplerate, amplitude=0.7)
+        original += sine_wave(1200, samplerate=samplerate, amplitude=0.07)
+
+        data = build_visualisation_data(original, original, samplerate, "Normal")
+        raw_ratio = _magnitude_at(data.original.fft_magnitudes, data.original.fft_freqs, 1200)
+        display_ratio = _magnitude_at(data.original.fft_display_magnitudes, data.original.fft_freqs, 1200)
+
+        self.assertLess(raw_ratio, 0.2)
+        self.assertGreater(display_ratio, 0.55)
+
+    def test_silent_audio_has_safe_display_defaults(self):
+        samplerate = 12000
+        silence = np.zeros((samplerate, 1), dtype=np.float32)
+
+        data = build_visualisation_data(silence, silence, samplerate, "Normal")
+
+        self.assertEqual(data.waveform_limit, 0.05)
+        self.assertEqual(data.display_gain, 1.0)
+        self.assertTrue(np.all(np.isfinite(data.original.fft_display_magnitudes)))
+        self.assertTrue(np.all(np.isfinite(data.difference_waveform_amplitudes)))
+
+
+def _magnitude_at(magnitudes, freqs, frequency):
+    return float(magnitudes[int(np.argmin(np.abs(freqs - frequency)))])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -70,20 +70,26 @@ def _mono(audio):
 
 
 def _frequency_shift(audio, factor):
-    shifted_channels = [_shift_channel(audio[:, channel], factor) for channel in range(audio.shape[1])]
+    shifted_channels = [_resample_pitch_channel(audio[:, channel], factor) for channel in range(audio.shape[1])]
     return np.stack(shifted_channels, axis=1)
 
 
-def _shift_channel(samples, factor):
-    spectrum = np.fft.rfft(samples)
-    shifted = np.zeros_like(spectrum)
+def _resample_pitch_channel(samples, factor):
+    original_length = len(samples)
+    if original_length == 0:
+        return samples.astype(np.float32)
 
-    for source_bin in range(1, len(spectrum)):
-        target_bin = int(round(source_bin * factor))
-        if 0 < target_bin < len(shifted):
-            shifted[target_bin] += spectrum[source_bin]
+    new_length = max(1, int(round(original_length / factor)))
+    source_positions = np.arange(new_length, dtype=np.float32) * factor
+    source_positions = np.clip(source_positions, 0, original_length - 1)
+    resampled = np.interp(source_positions, np.arange(original_length), samples).astype(np.float32)
 
-    return np.fft.irfft(shifted, n=len(samples)).astype(np.float32)
+    if new_length >= original_length:
+        return resampled[:original_length]
+
+    output = np.zeros(original_length, dtype=np.float32)
+    output[:new_length] = resampled
+    return output
 
 
 def _robot(audio, samplerate):

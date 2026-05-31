@@ -20,12 +20,18 @@ class FakeSignal:
     def connect(self, callback):
         self.callback = callback
 
+    def emit(self, *args, **kwargs):
+        if self.callback is not None:
+            self.callback(*args, **kwargs)
+
 
 class FakeWidget:
     def __init__(self, *args, **kwargs):
         self._object_name = ""
         self.minimum_height = None
         self.update_count = 0
+        self.enabled = True
+        self.style_sheet = ""
 
     def setObjectName(self, name):
         self._object_name = name
@@ -36,6 +42,15 @@ class FakeWidget:
     def setMinimumHeight(self, height):
         self.minimum_height = height
 
+    def setStyleSheet(self, style_sheet):
+        self.style_sheet = style_sheet
+
+    def setEnabled(self, enabled):
+        self.enabled = bool(enabled)
+
+    def isEnabled(self):
+        return self.enabled
+
     def update(self):
         self.update_count += 1
 
@@ -45,12 +60,23 @@ class FakeButton(FakeWidget):
         super().__init__()
         self._text = text
         self.clicked = FakeSignal()
+        self.checkable = False
+        self.checked = False
 
     def setText(self, text):
         self._text = text
 
     def text(self):
         return self._text
+
+    def setCheckable(self, checkable):
+        self.checkable = bool(checkable)
+
+    def setChecked(self, checked):
+        self.checked = bool(checked)
+
+    def isChecked(self):
+        return self.checked
 
 
 class FakeComboBox(FakeWidget):
@@ -78,8 +104,25 @@ class FakeLabel(FakeWidget):
 class FakeLayout:
     def __init__(self):
         self.widgets = []
+        self.layouts = []
 
-    def addWidget(self, widget):
+    def addWidget(self, widget, *args):
+        widget.layout_args = args
+        self.widgets.append(widget)
+
+    def addLayout(self, layout):
+        self.layouts.append(layout)
+
+    def setSpacing(self, spacing):
+        self.spacing = spacing
+
+    def setContentsMargins(self, *margins):
+        self.margins = margins
+
+
+class FakeGridLayout(FakeLayout):
+    def addWidget(self, widget, *args):
+        widget.grid_position = args
         self.widgets.append(widget)
 
 
@@ -137,10 +180,28 @@ class FakeInputStream:
         self.closed = True
 
 
+class FakeTimer:
+    def __init__(self, *args, **kwargs):
+        self.timeout = FakeSignal()
+        self.active = False
+        self.interval = None
+
+    def start(self, interval=None):
+        self.active = True
+        self.interval = interval
+
+    def stop(self):
+        self.active = False
+
+    def isActive(self):
+        return self.active
+
+
 def install_fake_modules():
     qtcore = types.ModuleType("PySide6.QtCore")
     qtcore.QPointF = object
     qtcore.QRectF = object
+    qtcore.QTimer = FakeTimer
     qtcore.Qt = types.SimpleNamespace(
         AlignmentFlag=types.SimpleNamespace(AlignCenter=0, AlignLeft=1, AlignRight=2, AlignTop=4, AlignBottom=8),
         PenStyle=types.SimpleNamespace(DotLine=1),
@@ -155,6 +216,8 @@ def install_fake_modules():
     qtwidgets = types.ModuleType("PySide6.QtWidgets")
     qtwidgets.QApplication = object
     qtwidgets.QComboBox = FakeComboBox
+    qtwidgets.QGridLayout = FakeGridLayout
+    qtwidgets.QHBoxLayout = FakeLayout
     qtwidgets.QLabel = FakeLabel
     qtwidgets.QMainWindow = FakeMainWindow
     qtwidgets.QPushButton = FakeButton
@@ -168,8 +231,22 @@ def install_fake_modules():
 
     sounddevice = types.ModuleType("sounddevice")
     sounddevice.InputStream = FakeInputStream
-    sounddevice.play = lambda *args, **kwargs: None
-    sounddevice.wait = lambda: None
+    sounddevice.play_calls = []
+    sounddevice.stop_calls = 0
+    sounddevice.wait_calls = 0
+
+    def play(*args, **kwargs):
+        sounddevice.play_calls.append((args, kwargs))
+
+    def stop():
+        sounddevice.stop_calls += 1
+
+    def wait():
+        sounddevice.wait_calls += 1
+
+    sounddevice.play = play
+    sounddevice.stop = stop
+    sounddevice.wait = wait
 
     sys.modules["PySide6"] = pyside
     sys.modules["PySide6.QtCore"] = qtcore
@@ -216,7 +293,7 @@ class ProjectSetupTests(unittest.TestCase):
                 window.start_recording()
 
             self.assertTrue(window.is_recording)
-            self.assertEqual(window.record_button.text(), "Stop Recording")
+            self.assertEqual(window.record_button.text(), "Stop")
             self.assertTrue(window.recording_stream.started)
 
             with redirect_stdout(StringIO()):
@@ -268,6 +345,99 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_audio_visualisation_widget_uses_two_teaching_comparison_panels(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("audio_visualisation_widget", None)
+            from audio_visualisation_widget import AudioVisualisationWidget
+
+            widget = AudioVisualisationWidget()
+
+            self.assertEqual(widget.comparison_panel_titles, ("Sound shape", "Pitch + brightness"))
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_main_window_creates_large_effect_cards_without_dropdown(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertFalse(hasattr(window, "effect_combo_box"))
+            self.assertEqual(
+                set(window.effect_buttons),
+                {"Chipmunk", "Giant", "Robot", "Radio", "Alien", "Echo"},
+            )
+            self.assertEqual(window.selected_effect_names, ["Chipmunk"])
+            self.assertEqual(window.selected_effect_name, "Chipmunk")
+            self.assertTrue(window.effect_buttons["Chipmunk"].isChecked())
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_effect_cards_toggle_multiple_effects_and_reprocess_audio(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            samplerate = 8000
+            t = np.arange(samplerate, dtype=np.float32) / samplerate
+            window = MainWindow()
+            window.samplerate = samplerate
+            window.audio_data = (0.7 * np.sin(2 * np.pi * 220 * t)).reshape(-1, 1)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Robot")
+
+            self.assertEqual(window.selected_effect_names, ["Chipmunk", "Robot"])
+            self.assertEqual(window.selected_effect_name, "Chipmunk + Robot")
+            self.assertTrue(window.effect_buttons["Robot"].isChecked())
+            self.assertTrue(window.effect_buttons["Chipmunk"].isChecked())
+            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Chipmunk + Robot")
+            self.assertIn("Robot", window.status_label.text)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Chipmunk")
+
+            self.assertEqual(window.selected_effect_names, ["Robot"])
+            self.assertFalse(window.effect_buttons["Chipmunk"].isChecked())
+            self.assertTrue(window.effect_buttons["Robot"].isChecked())
+            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Robot")
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_controls_are_disabled_until_recording_is_available_and_while_recording(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertFalse(window.play_original_button.isEnabled())
+            self.assertFalse(window.play_filtered_button.isEnabled())
+
+            with redirect_stdout(StringIO()):
+                window.start_recording()
+
+            self.assertFalse(window.play_original_button.isEnabled())
+            self.assertFalse(window.play_filtered_button.isEnabled())
+
+            window.audio_data = np.ones((8, 1), dtype=np.float32)
+            with redirect_stdout(StringIO()):
+                window.start_recording()
+
+            self.assertTrue(window.play_original_button.isEnabled())
+            self.assertTrue(window.play_filtered_button.isEnabled())
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_process_audio_updates_visualisation_widget(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
@@ -289,6 +459,8 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(data.effect_name, "Chipmunk")
             self.assertAlmostEqual(data.original.dominant_frequency, 220, delta=2)
             self.assertGreater(data.processed.dominant_frequency, 280)
+            self.assertLess(data.waveform_limit, 1.0)
+            self.assertGreater(float(np.max(np.abs(data.difference_waveform_amplitudes))), 0.02)
             self.assertGreater(window.visualisation_widget.update_count, 0)
         finally:
             sys.path.remove(str(SRC))
@@ -311,6 +483,78 @@ class ProjectSetupTests(unittest.TestCase):
                 window.start_recording()
 
             self.assertIsNone(window.visualisation_widget.visualisation_data)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_playback_stops_current_output_before_playing_original(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window.audio_data = np.ones((8, 1), dtype=np.float32)
+
+            with redirect_stdout(StringIO()):
+                window.play_original()
+
+            sounddevice = sys.modules["sounddevice"]
+            self.assertEqual(sounddevice.stop_calls, 1)
+            self.assertEqual(len(sounddevice.play_calls), 1)
+            self.assertEqual(sounddevice.wait_calls, 0)
+            self.assertTrue(window.playback_timer.isActive())
+            self.assertEqual(window.visualisation_widget.playback_progress, 0.0)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_playback_timer_advances_visualisation_playhead_and_finishes(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window.samplerate = 4
+            window.audio_data = np.ones((4, 1), dtype=np.float32)
+
+            with redirect_stdout(StringIO()):
+                window.play_original()
+                window._advance_playback()
+
+            self.assertGreater(window.visualisation_widget.playback_progress, 0.0)
+
+            with redirect_stdout(StringIO()):
+                for _ in range(40):
+                    window._advance_playback()
+
+            self.assertEqual(window.visualisation_widget.playback_progress, 1.0)
+            self.assertFalse(window.playback_timer.isActive())
+            self.assertIn("Ready", window.status_label.text)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_playback_is_ignored_while_recording(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window.audio_data = np.ones((8, 1), dtype=np.float32)
+            window.audio_data_processed = np.ones((8, 1), dtype=np.float32)
+            window.is_recording = True
+
+            with redirect_stdout(StringIO()):
+                window.play_original()
+                window.play_filtered()
+
+            sounddevice = sys.modules["sounddevice"]
+            self.assertEqual(sounddevice.stop_calls, 0)
+            self.assertEqual(sounddevice.play_calls, [])
+            self.assertEqual(sounddevice.wait_calls, 0)
         finally:
             sys.path.remove(str(SRC))
 

@@ -42,6 +42,21 @@ class AudioEffectsTests(unittest.TestCase):
         self.assertGreater(dominant_frequency(processed, 8000), 280)
         self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
 
+    def test_chipmunk_keeps_single_transient_from_becoming_echo_train(self):
+        samplerate = 8000
+        audio = np.zeros((samplerate, 1), dtype=np.float32)
+        burst = sine_wave(440, samplerate=samplerate, seconds=0.05, amplitude=0.7)
+        audio[3600:3600 + len(burst)] = burst
+
+        processed = apply_effect(audio, "Chipmunk", samplerate=samplerate)
+
+        envelope = np.abs(processed.reshape(-1))
+        active = envelope > (float(np.max(envelope)) * 0.2)
+        active_indices = np.flatnonzero(active)
+        active_span = int(active_indices[-1] - active_indices[0])
+
+        self.assertLess(active_span, 500)
+
     def test_giant_lowers_dominant_frequency_without_changing_clip_length(self):
         audio = sine_wave(260)
 
