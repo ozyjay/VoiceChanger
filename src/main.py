@@ -1,7 +1,10 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QComboBox, QLabel, QWidget, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QComboBox, QWidget, QVBoxLayout
 import sounddevice as sd
 import numpy as np
+
+from audio_effects import EFFECT_NAMES, apply_effect
+from audio_visualisation_widget import AudioVisualisationWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -38,20 +41,15 @@ class MainWindow(QMainWindow):
 
         # Create effect dropdown
         self.effect_combo_box = QComboBox()
-        self.effect_combo_box.addItem('Normal')
-        self.effect_combo_box.addItem('Chipmunk')
-        self.effect_combo_box.addItem('Giant')
-        self.effect_combo_box.addItem('Robot')
-        self.effect_combo_box.addItem('Radio')
-        self.effect_combo_box.addItem('Alien')
-        self.effect_combo_box.addItem('Echo')
+        for effect_name in EFFECT_NAMES:
+            self.effect_combo_box.addItem(effect_name)
         self.effect_combo_box.currentIndexChanged.connect(self.effect_selected)
 
         layout.addWidget(self.effect_combo_box)
 
-        # Create placeholder canvas area
-        self.waveformAndFftCanvas = QLabel('Waveform and FFT visualisation will appear here.')
-        layout.addWidget(self.waveformAndFftCanvas)
+        self.visualisation_widget = AudioVisualisationWidget()
+        self.waveformAndFftCanvas = self.visualisation_widget
+        layout.addWidget(self.visualisation_widget)
 
     def start_recording(self):
         if self.is_recording:
@@ -60,12 +58,15 @@ class MainWindow(QMainWindow):
             self.recording_stream.close()
             self.is_recording = False
             self.record_button.setText("Record")
+            if self.audio_data is not None:
+                self.process_audio(self.effect_combo_box.currentText())
             return
 
         print("Starting recording...")
         self.is_recording = True
         self.audio_data = None
         self.audio_data_processed = None
+        self.visualisation_widget.clear()
         
         # Set up the recording callback
         self.recording_callback = self._record_audio_callback
@@ -104,39 +105,20 @@ class MainWindow(QMainWindow):
 
         print(f"Processing audio with effect: {effect_name}...")
 
-        # Default processed data to original data
-        self.audio_data_processed = self.audio_data.copy()
-        if effect_name == 'Normal':
-            print("Using original audio.")
-        elif effect_name == 'Echo':
-            delay_samples = int(self.samplerate * 0.15)  # 150ms delay
-            feedback = 0.4  # 40% feedback
-            echo_data = np.zeros_like(self.audio_data)
-            echo_data[delay_samples:] = self.audio_data[:len(echo_data) - delay_samples]
-
-            for i in range(delay_samples, len(self.audio_data)):
-                # Simple mix: current signal + delayed signal * feedback
-                echo_data[i] = (1 - feedback) * echo_data[i] + feedback * self.audio_data[i - delay_samples]
-
-            # Overwrite processed data with the mixed signal
-            self.audio_data_processed = self.audio_data.copy() + echo_data
-            print("Echo effect applied.")
-        elif effect_name == 'Chipmunk':
-            # Placeholder: Implement pitch shifting for chipmunk effect
-            self.audio_data_processed = self.audio_data * 0.8
-        elif effect_name == 'Giant':
-            # Placeholder: Implement pitch lowering for giant effect
-            self.audio_data_processed = self.audio_data * 0.9
-        elif effect_name == 'Robot':
-            # Placeholder: Implement vocoder/vocoding effect
-            self.audio_data_processed = self.audio_data * 0.9
-        else:
-            # Default to original data if effect is unknown/unimplemented
-            self.audio_data_processed = self.audio_data
+        self.audio_data_processed = apply_effect(self.audio_data, effect_name, self.samplerate)
+        self.visualisation_widget.set_audio(
+            self.audio_data,
+            self.audio_data_processed,
+            effect_name,
+            self.samplerate,
+        )
         print("Processing complete.")
         return True
 
     def play_filtered(self):
+        if self.audio_data_processed is None and self.audio_data is not None:
+            self.process_audio(self.effect_combo_box.currentText())
+
         if self.audio_data_processed is not None:
             print("Playing filtered audio...")
             try:
@@ -154,6 +136,7 @@ class MainWindow(QMainWindow):
             self.process_audio(selected_effect)
         else:
             self.audio_data_processed = None
+            self.visualisation_widget.clear()
             print("Please record audio first to apply effects.")
 
 if __name__ == '__main__':

@@ -6,6 +6,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
+import numpy as np
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -22,12 +24,20 @@ class FakeSignal:
 class FakeWidget:
     def __init__(self, *args, **kwargs):
         self._object_name = ""
+        self.minimum_height = None
+        self.update_count = 0
 
     def setObjectName(self, name):
         self._object_name = name
 
     def objectName(self):
         return self._object_name
+
+    def setMinimumHeight(self, height):
+        self.minimum_height = height
+
+    def update(self):
+        self.update_count += 1
 
 
 class FakeButton(FakeWidget):
@@ -61,6 +71,9 @@ class FakeLabel(FakeWidget):
         super().__init__()
         self.text = text
 
+    def setText(self, text):
+        self.text = text
+
 
 class FakeLayout:
     def __init__(self):
@@ -71,7 +84,7 @@ class FakeLayout:
 
 
 class FakeContainer(FakeWidget):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.layout = None
 
@@ -125,6 +138,20 @@ class FakeInputStream:
 
 
 def install_fake_modules():
+    qtcore = types.ModuleType("PySide6.QtCore")
+    qtcore.QPointF = object
+    qtcore.QRectF = object
+    qtcore.Qt = types.SimpleNamespace(
+        AlignmentFlag=types.SimpleNamespace(AlignCenter=0, AlignLeft=1, AlignRight=2, AlignTop=4, AlignBottom=8),
+        PenStyle=types.SimpleNamespace(DotLine=1),
+    )
+
+    qtgui = types.ModuleType("PySide6.QtGui")
+    qtgui.QColor = object
+    qtgui.QFont = object
+    qtgui.QPainter = object
+    qtgui.QPen = object
+
     qtwidgets = types.ModuleType("PySide6.QtWidgets")
     qtwidgets.QApplication = object
     qtwidgets.QComboBox = FakeComboBox
@@ -135,6 +162,8 @@ def install_fake_modules():
     qtwidgets.QWidget = FakeContainer
 
     pyside = types.ModuleType("PySide6")
+    pyside.QtCore = qtcore
+    pyside.QtGui = qtgui
     pyside.QtWidgets = qtwidgets
 
     sounddevice = types.ModuleType("sounddevice")
@@ -143,6 +172,8 @@ def install_fake_modules():
     sounddevice.wait = lambda: None
 
     sys.modules["PySide6"] = pyside
+    sys.modules["PySide6.QtCore"] = qtcore
+    sys.modules["PySide6.QtGui"] = qtgui
     sys.modules["PySide6.QtWidgets"] = qtwidgets
     sys.modules["sounddevice"] = sounddevice
 
@@ -195,6 +226,91 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.record_button.text(), "Record")
             self.assertTrue(window.recording_stream.stopped)
             self.assertTrue(window.recording_stream.closed)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_process_audio_uses_real_chipmunk_effect(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            samplerate = 8000
+            t = np.arange(samplerate, dtype=np.float32) / samplerate
+            window = MainWindow()
+            window.samplerate = samplerate
+            window.audio_data = (0.7 * np.sin(2 * np.pi * 220 * t)).reshape(-1, 1)
+
+            with redirect_stdout(StringIO()):
+                self.assertTrue(window.process_audio("Chipmunk"))
+
+            freqs = np.fft.rfftfreq(len(window.audio_data_processed), d=1 / samplerate)
+            magnitudes = np.abs(np.fft.rfft(window.audio_data_processed.reshape(-1)))
+            magnitudes[0] = 0
+            dominant_frequency = freqs[int(np.argmax(magnitudes))]
+            self.assertGreater(dominant_frequency, 280)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_main_window_uses_audio_visualisation_widget(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            sys.modules.pop("audio_visualisation_widget", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.visualisation_widget.__class__.__name__, "AudioVisualisationWidget")
+            self.assertIsNone(window.visualisation_widget.visualisation_data)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_process_audio_updates_visualisation_widget(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            sys.modules.pop("audio_visualisation_widget", None)
+            from main import MainWindow
+
+            samplerate = 8000
+            t = np.arange(samplerate, dtype=np.float32) / samplerate
+            window = MainWindow()
+            window.samplerate = samplerate
+            window.audio_data = (0.7 * np.sin(2 * np.pi * 220 * t)).reshape(-1, 1)
+
+            with redirect_stdout(StringIO()):
+                self.assertTrue(window.process_audio("Chipmunk"))
+
+            data = window.visualisation_widget.visualisation_data
+            self.assertEqual(data.effect_name, "Chipmunk")
+            self.assertAlmostEqual(data.original.dominant_frequency, 220, delta=2)
+            self.assertGreater(data.processed.dominant_frequency, 280)
+            self.assertGreater(window.visualisation_widget.update_count, 0)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_starting_new_recording_clears_visualisation_widget(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            sys.modules.pop("audio_visualisation_widget", None)
+            from main import MainWindow
+
+            samplerate = 8000
+            t = np.arange(samplerate, dtype=np.float32) / samplerate
+            window = MainWindow()
+            window.samplerate = samplerate
+            window.audio_data = (0.7 * np.sin(2 * np.pi * 220 * t)).reshape(-1, 1)
+            with redirect_stdout(StringIO()):
+                window.process_audio("Chipmunk")
+                window.start_recording()
+
+            self.assertIsNone(window.visualisation_widget.visualisation_data)
         finally:
             sys.path.remove(str(SRC))
 
