@@ -428,11 +428,11 @@ class MainWindow(QMainWindow):
             selected = effect_name in self.selected_effect_names
             button.setChecked(selected)
             color = EFFECT_COLORS[effect_name]
-            led_label = "LED ● ON" if selected else "LED ○ OFF"
+            indicator = "● ON" if selected else "○ OFF"
             button.setText(
                 f"{effect_name.upper()}\n"
                 f"{EFFECT_SUBTITLES[effect_name]}\n"
-                f"{led_label}"
+                f"{indicator}"
             )
             border_width = 4 if selected else 2
             background = color if selected else "#243044"
