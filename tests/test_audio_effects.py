@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from audio_effects import apply_effect, fft_data, waveform_data
+from audio_effects import apply_effect, fft_data, prepare_playback_audio, waveform_data
 
 
 def sine_wave(frequency, samplerate=8000, seconds=1.0, amplitude=0.7):
@@ -131,6 +131,17 @@ class AudioEffectsTests(unittest.TestCase):
 
         self.assertAlmostEqual(float(freqs[int(np.argmax(magnitudes))]), 440, delta=2)
         self.assertAlmostEqual(float(np.max(magnitudes)), 1.0, places=5)
+
+    def test_prepare_playback_audio_adds_headroom_for_hot_audio(self):
+        audio = np.array([[-1.4], [-0.4], [0.0], [0.4], [1.6]], dtype=np.float32)
+
+        prepared = prepare_playback_audio(audio)
+
+        self.assertEqual(prepared.shape, audio.shape)
+        self.assertEqual(prepared.dtype, np.float32)
+        self.assertLessEqual(float(np.max(np.abs(prepared))), 0.95)
+        self.assertGreater(float(prepared[-1, 0]), float(prepared[3, 0]))
+        self.assertLess(float(prepared[0, 0]), float(prepared[1, 0]))
 
 
 if __name__ == "__main__":

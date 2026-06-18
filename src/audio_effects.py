@@ -27,6 +27,18 @@ def apply_effect(audio_data, effect_name, samplerate):
     return _limit(processed).astype(np.float32)
 
 
+def prepare_playback_audio(audio_data, ceiling=0.95):
+    audio = _as_audio_array(audio_data)
+    peak = float(np.max(np.abs(audio))) if audio.size else 0.0
+    if peak <= 0:
+        return audio.astype(np.float32)
+
+    ceiling = float(max(0.1, min(1.0, ceiling)))
+    scaled = audio / max(peak, ceiling)
+    limited = np.tanh(scaled * 1.15) / np.tanh(1.15)
+    return (limited * ceiling).astype(np.float32)
+
+
 def waveform_data(audio_data, samplerate, max_points=1000):
     audio = _mono(_as_audio_array(audio_data))
     if len(audio) == 0:

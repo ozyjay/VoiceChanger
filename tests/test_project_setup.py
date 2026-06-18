@@ -636,6 +636,26 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_playback_sends_limited_audio_to_output_device(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window.audio_data = np.array([[-1.4], [0.0], [1.6]], dtype=np.float32)
+
+            with redirect_stdout(StringIO()):
+                window.play_original()
+
+            sounddevice = sys.modules["sounddevice"]
+            played_audio = sounddevice.play_calls[0][0][0]
+            self.assertLessEqual(float(np.max(np.abs(played_audio))), 0.95)
+            self.assertEqual(played_audio.dtype, np.float32)
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_playback_timer_advances_visualisation_playhead_and_finishes(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QLabel, QM
 import sounddevice as sd
 import numpy as np
 
-from audio_effects import EFFECT_NAMES, apply_effect
+from audio_effects import EFFECT_NAMES, apply_effect, prepare_playback_audio
 from audio_visualisation_widget import AudioVisualisationWidget
 
 
@@ -321,7 +321,8 @@ class MainWindow(QMainWindow):
     def _play_audio(self, audio_data, ready_status):
         try:
             sd.stop()
-            sd.play(audio_data, self.samplerate)
+            playback_audio = prepare_playback_audio(audio_data)
+            sd.play(playback_audio, self.samplerate)
             self.playback_elapsed_seconds = 0.0
             self.playback_duration_seconds = max(len(audio_data) / float(self.samplerate), 0.001)
             self.playback_ready_status = ready_status
