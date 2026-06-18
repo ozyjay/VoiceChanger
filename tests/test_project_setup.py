@@ -409,6 +409,29 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_open_day_stage_layout_shows_header_chain_and_reset_controls(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.title_label.text, "Voice Changer Live")
+            self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Normal voice")
+            self.assertEqual(window.reset_button.text(), "Reset / Next Visitor")
+            self.assertIn("Record your voice", window.status_label.text)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Echo")
+                window.effect_selected("Robot")
+
+            self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Echo → Robot")
+            self.assertIn("Choose effects", window.status_label.text)
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_effect_cards_toggle_multiple_effects_and_reprocess_audio(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))

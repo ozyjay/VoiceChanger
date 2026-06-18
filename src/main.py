@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
         self.setGeometry(100, 100, 1100, 760)
-        self.setWindowTitle('Open Day Voice Effects Demo')
+        self.setWindowTitle('Voice Changer Live')
         self.setStyleSheet(
             """
             QMainWindow { background: #111827; }
@@ -77,9 +77,9 @@ class MainWindow(QMainWindow):
         layout.setSpacing(9)
         centralWidget.setLayout(layout)
 
-        self.title_label = QLabel("Voice Changer")
+        self.title_label = QLabel("Voice Changer Live")
         self.title_label.setObjectName("titleLabel")
-        self.title_label.setStyleSheet("font-size: 28px; font-weight: 800; color: #f8fafc;")
+        self.title_label.setStyleSheet("font-size: 32px; font-weight: 900; color: #f8fafc;")
         layout.addWidget(self.title_label)
 
         self.status_label = QLabel("Step 1: Record your voice")
@@ -89,6 +89,14 @@ class MainWindow(QMainWindow):
             "padding: 8px 12px; font-size: 16px; font-weight: 700; color: #cbd5e1;"
         )
         layout.addWidget(self.status_label)
+
+        self.active_chain_label = QLabel(self._effect_chain_display())
+        self.active_chain_label.setObjectName("activeChainLabel")
+        self.active_chain_label.setStyleSheet(
+            "background: #020617; border: 2px solid #38bdf8; border-radius: 8px; "
+            "padding: 9px 12px; font-size: 18px; font-weight: 900; color: #e0f2fe;"
+        )
+        layout.addWidget(self.active_chain_label)
 
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(10)
@@ -105,10 +113,13 @@ class MainWindow(QMainWindow):
         self.play_filtered_button = QPushButton(self._effect_play_label())
         self.play_filtered_button.setObjectName('playFilteredButton')
         self.play_filtered_button.clicked.connect(self.play_filtered)
+        self.reset_button = QPushButton('Reset / Next Visitor')
+        self.reset_button.setObjectName('resetButton')
 
         controls_layout.addWidget(self.record_button)
         controls_layout.addWidget(self.play_original_button)
         controls_layout.addWidget(self.play_filtered_button)
+        controls_layout.addWidget(self.reset_button)
         layout.addLayout(controls_layout)
 
         effects_layout = QGridLayout()
@@ -244,7 +255,7 @@ class MainWindow(QMainWindow):
         else:
             self.audio_data_processed = None
             self.visualisation_widget.clear()
-            self._set_status(f"Record your voice, then try {self.selected_effect_name}")
+            self._set_status(f"Step 2: Choose effects. Step 1 is still to record your voice for {self.selected_effect_name}")
             print("Please record audio first to apply effects.")
         self._update_control_state()
 
@@ -296,6 +307,7 @@ class MainWindow(QMainWindow):
                 f"font-weight: 800; min-height: 58px; padding: 6px;"
             )
         self.play_filtered_button.setText(self._effect_play_label())
+        self.active_chain_label.setText(self._effect_chain_display())
 
     def _normalise_effect_names(self, effect_names):
         if isinstance(effect_names, str):
@@ -307,6 +319,12 @@ class MainWindow(QMainWindow):
         if not names:
             return "Normal"
         return " + ".join(names)
+
+    def _effect_chain_display(self, effect_names=None):
+        names = self.selected_effect_names if effect_names is None else self._normalise_effect_names(effect_names)
+        if not names:
+            return "ACTIVE CHAIN: Normal voice"
+        return f"ACTIVE CHAIN: {' → '.join(names)}"
 
     def _effect_play_label(self, effect_names=None):
         names = self.selected_effect_names if effect_names is None else self._normalise_effect_names(effect_names)
