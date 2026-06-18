@@ -157,6 +157,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(effects_layout)
 
         self.visualisation_widget = AudioVisualisationWidget()
+        self.visualisation_widget.on_waveform_follow_changed = self._set_waveform_follow_button_checked
         self.waveformAndFftCanvas = self.visualisation_widget
 
         zoom_layout = QHBoxLayout()
@@ -372,6 +373,9 @@ class MainWindow(QMainWindow):
     def _toggle_waveform_follow(self):
         enabled = not self.visualisation_widget.waveform_follow_enabled
         self.visualisation_widget.set_waveform_follow_enabled(enabled)
+        self.follow_button.setChecked(enabled)
+
+    def _set_waveform_follow_button_checked(self, enabled):
         self.follow_button.setChecked(enabled)
 
     def _update_control_state(self):

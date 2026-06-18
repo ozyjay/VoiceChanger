@@ -22,6 +22,9 @@ class AudioVisualisationWidget(QWidget):
         self.playback_progress = None
         self.waveform_zoom = 1.0
         self.waveform_follow_enabled = True
+        self.waveform_pan_start_seconds = 0.0
+        self._waveform_drag_last_x = None
+        self.on_waveform_follow_changed = None
         self.comparison_panel_titles = ("Sound shape", "Pitch + brightness")
         self.setMinimumHeight(350)
 
@@ -34,11 +37,15 @@ class AudioVisualisationWidget(QWidget):
             max_frequency=5000,
         )
         self.playback_progress = None
+        self.waveform_pan_start_seconds = 0.0
+        self._waveform_drag_last_x = None
         self.update()
 
     def clear(self):
         self.visualisation_data = None
         self.playback_progress = None
+        self.waveform_pan_start_seconds = 0.0
+        self._waveform_drag_last_x = None
         self.update()
 
     def zoom_in_waveform(self):
@@ -51,15 +58,77 @@ class AudioVisualisationWidget(QWidget):
 
     def reset_waveform_zoom(self):
         self.waveform_zoom = 1.0
+        self.waveform_pan_start_seconds = 0.0
         self.update()
 
     def set_waveform_follow_enabled(self, enabled):
-        self.waveform_follow_enabled = bool(enabled)
+        enabled = bool(enabled)
+        if self.waveform_follow_enabled != enabled:
+            self.waveform_follow_enabled = enabled
+            if self.on_waveform_follow_changed is not None:
+                self.on_waveform_follow_changed(enabled)
+        else:
+            self.waveform_follow_enabled = enabled
         self.update()
 
     def set_playback_progress(self, progress):
         self.playback_progress = max(0.0, min(1.0, float(progress)))
         self.update()
+
+    def pan_waveform_by_pixels(self, delta_pixels, viewport_width):
+        if self.visualisation_data is None or self.waveform_zoom <= 1.0:
+            return
+
+        viewport_width = float(viewport_width)
+        if viewport_width <= 0:
+            return
+
+        duration = max(float(self.visualisation_data.duration_seconds), 0.001)
+        window = duration / self.waveform_zoom
+        max_start = max(0.0, duration - window)
+        delta_seconds = -(float(delta_pixels) / viewport_width) * window
+        self.waveform_pan_start_seconds = max(0.0, min(max_start, self.waveform_pan_start_seconds + delta_seconds))
+        self.update()
+
+    def start_waveform_drag(self, x_position):
+        self._waveform_drag_last_x = float(x_position)
+
+    def drag_waveform_to(self, x_position, viewport_width):
+        if self._waveform_drag_last_x is None:
+            return
+
+        if self.waveform_follow_enabled:
+            self.waveform_pan_start_seconds = self._waveform_time_window()[0]
+            self.set_waveform_follow_enabled(False)
+
+        x_position = float(x_position)
+        self.pan_waveform_by_pixels(x_position - self._waveform_drag_last_x, viewport_width)
+        self._waveform_drag_last_x = x_position
+
+    def end_waveform_drag(self):
+        self._waveform_drag_last_x = None
+
+    def mousePressEvent(self, event):
+        if self._is_left_mouse_event(event) and self._event_inside_waveform_plot(event) and self.waveform_zoom > 1.0:
+            self.start_waveform_drag(self._event_x(event))
+            self._accept_event(event)
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._waveform_drag_last_x is not None:
+            left, _top, right, _bottom = self._waveform_plot_bounds()
+            self.drag_waveform_to(self._event_x(event), right - left)
+            self._accept_event(event)
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._waveform_drag_last_x is not None:
+            self.end_waveform_drag()
+            self._accept_event(event)
+            return
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -79,9 +148,7 @@ class AudioVisualisationWidget(QWidget):
             f"Original vs {data.effect_name}",
         )
 
-        left, top, gap = 16, 52, 14
-        panel_width = self.width() - (left * 2)
-        panel_height = (self.height() - top - 16 - gap) / 2
+        left, top, gap, panel_width, panel_height = self._comparison_panel_geometry()
 
         panels = [
             QRectF(left, top, panel_width, panel_height),
@@ -334,12 +401,56 @@ class AudioVisualisationWidget(QWidget):
         window = duration / self.waveform_zoom
         if self.waveform_follow_enabled and self.playback_progress is not None:
             centre = self.playback_progress * duration
+            start = centre - (window / 2.0)
         else:
-            centre = window / 2.0
+            start = self.waveform_pan_start_seconds
 
-        start = max(0.0, min(duration - window, centre - (window / 2.0)))
+        start = max(0.0, min(duration - window, start))
+        self.waveform_pan_start_seconds = start
         end = min(duration, start + window)
         return round(start, 6), round(end, 6)
+
+    def _comparison_panel_geometry(self):
+        left, top, gap = 16, 52, 14
+        panel_width = self.width() - (left * 2)
+        panel_height = (self.height() - top - 16 - gap) / 2
+        return left, top, gap, panel_width, panel_height
+
+    def _waveform_plot_bounds(self):
+        left, top, _gap, panel_width, panel_height = self._comparison_panel_geometry()
+        plot_left = left + 54
+        plot_top = top + 42
+        plot_right = left + panel_width - 18
+        plot_bottom = top + panel_height - 34
+        return plot_left, plot_top, plot_right, plot_bottom
+
+    def _event_inside_waveform_plot(self, event):
+        left, top, right, bottom = self._waveform_plot_bounds()
+        x = self._event_x(event)
+        y = self._event_y(event)
+        return left <= x <= right and top <= y <= bottom
+
+    def _event_x(self, event):
+        position = event.position() if hasattr(event, "position") else event.pos()
+        return float(position.x())
+
+    def _event_y(self, event):
+        position = event.position() if hasattr(event, "position") else event.pos()
+        return float(position.y())
+
+    def _is_left_mouse_event(self, event):
+        left_button = getattr(getattr(Qt, "MouseButton", object()), "LeftButton", None)
+        if left_button is None:
+            return True
+        if hasattr(event, "button"):
+            return event.button() == left_button
+        if hasattr(event, "buttons"):
+            return bool(event.buttons() & left_button)
+        return True
+
+    def _accept_event(self, event):
+        if hasattr(event, "accept"):
+            event.accept()
 
 
 def _transparent(color_name, alpha):

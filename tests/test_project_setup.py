@@ -406,6 +406,57 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_audio_visualisation_widget_pans_zoomed_waveform_with_mouse_drag_distance(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("audio_visualisation_widget", None)
+            from audio_visualisation_widget import AudioVisualisationWidget
+
+            widget = AudioVisualisationWidget()
+            samplerate = 8000
+            audio = np.ones((samplerate * 4, 1), dtype=np.float32) * 0.2
+            widget.set_audio(audio, audio, "Normal", samplerate)
+            widget.zoom_in_waveform()
+            widget.set_waveform_follow_enabled(False)
+
+            self.assertEqual(widget._waveform_time_window(), (0.0, 2.0))
+
+            widget.pan_waveform_by_pixels(-200, viewport_width=400)
+            self.assertEqual(widget._waveform_time_window(), (1.0, 3.0))
+
+            widget.pan_waveform_by_pixels(-1000, viewport_width=400)
+            self.assertEqual(widget._waveform_time_window(), (2.0, 4.0))
+
+            widget.pan_waveform_by_pixels(1000, viewport_width=400)
+            self.assertEqual(widget._waveform_time_window(), (0.0, 2.0))
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_audio_visualisation_widget_dragging_turns_follow_off_and_notifies_window(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("audio_visualisation_widget", None)
+            from audio_visualisation_widget import AudioVisualisationWidget
+
+            changes = []
+            widget = AudioVisualisationWidget()
+            widget.on_waveform_follow_changed = changes.append
+            samplerate = 8000
+            audio = np.ones((samplerate * 4, 1), dtype=np.float32) * 0.2
+            widget.set_audio(audio, audio, "Normal", samplerate)
+            widget.zoom_in_waveform()
+
+            widget.start_waveform_drag(320)
+            widget.drag_waveform_to(120, viewport_width=400)
+
+            self.assertFalse(widget.waveform_follow_enabled)
+            self.assertEqual(changes, [False])
+            self.assertEqual(widget._waveform_time_window(), (1.0, 3.0))
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_main_window_creates_large_effect_cards_without_dropdown(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
@@ -558,6 +609,9 @@ class ProjectSetupTests(unittest.TestCase):
             window.follow_button.clicked.emit()
             self.assertFalse(window.visualisation_widget.waveform_follow_enabled)
             self.assertFalse(window.follow_button.isChecked())
+
+            window.visualisation_widget.set_waveform_follow_enabled(True)
+            self.assertTrue(window.follow_button.isChecked())
         finally:
             sys.path.remove(str(SRC))
 
