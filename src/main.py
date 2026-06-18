@@ -158,6 +158,30 @@ class MainWindow(QMainWindow):
 
         self.visualisation_widget = AudioVisualisationWidget()
         self.waveformAndFftCanvas = self.visualisation_widget
+
+        zoom_layout = QHBoxLayout()
+        zoom_layout.setSpacing(8)
+        self.zoom_in_button = QPushButton("Zoom In")
+        self.zoom_in_button.setObjectName("zoomInButton")
+        self.zoom_in_button.clicked.connect(lambda _checked=False: self.visualisation_widget.zoom_in_waveform())
+        self.zoom_out_button = QPushButton("Zoom Out")
+        self.zoom_out_button.setObjectName("zoomOutButton")
+        self.zoom_out_button.clicked.connect(lambda _checked=False: self.visualisation_widget.zoom_out_waveform())
+        self.zoom_reset_button = QPushButton("Reset Zoom")
+        self.zoom_reset_button.setObjectName("zoomResetButton")
+        self.zoom_reset_button.clicked.connect(lambda _checked=False: self.visualisation_widget.reset_waveform_zoom())
+        self.follow_button = QPushButton("Follow")
+        self.follow_button.setObjectName("followButton")
+        self.follow_button.setCheckable(True)
+        self.follow_button.setChecked(True)
+        self.follow_button.clicked.connect(lambda _checked=False: self._toggle_waveform_follow())
+        for button in (self.zoom_in_button, self.zoom_out_button, self.zoom_reset_button, self.follow_button):
+            button.setStyleSheet(
+                "background: #111827; border: 2px solid #475569; border-radius: 7px; "
+                "font-size: 13px; font-weight: 800; min-height: 28px; padding: 4px 10px;"
+            )
+            zoom_layout.addWidget(button)
+        layout.addLayout(zoom_layout)
         layout.addWidget(self.visualisation_widget, 1)
         self._refresh_effect_cards()
         self._update_control_state()
@@ -321,7 +345,7 @@ class MainWindow(QMainWindow):
     def _play_audio(self, audio_data, ready_status):
         try:
             sd.stop()
-            playback_audio = prepare_playback_audio(audio_data)
+            playback_audio = prepare_playback_audio(audio_data, samplerate=self.samplerate)
             sd.play(playback_audio, self.samplerate)
             self.playback_elapsed_seconds = 0.0
             self.playback_duration_seconds = max(len(audio_data) / float(self.samplerate), 0.001)
@@ -344,6 +368,11 @@ class MainWindow(QMainWindow):
 
     def _set_status(self, text):
         self.status_label.setText(text)
+
+    def _toggle_waveform_follow(self):
+        enabled = not self.visualisation_widget.waveform_follow_enabled
+        self.visualisation_widget.set_waveform_follow_enabled(enabled)
+        self.follow_button.setChecked(enabled)
 
     def _update_control_state(self):
         has_audio = self.audio_data is not None

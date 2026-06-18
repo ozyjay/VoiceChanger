@@ -143,6 +143,17 @@ class AudioEffectsTests(unittest.TestCase):
         self.assertGreater(float(prepared[-1, 0]), float(prepared[3, 0]))
         self.assertLess(float(prepared[0, 0]), float(prepared[1, 0]))
 
+    def test_prepare_playback_audio_fades_edges_to_prevent_clicks(self):
+        samplerate = 8000
+        audio = np.ones((samplerate, 1), dtype=np.float32) * 0.4
+
+        prepared = prepare_playback_audio(audio, samplerate=samplerate)
+
+        self.assertAlmostEqual(float(prepared[0, 0]), 0.0, places=5)
+        self.assertLess(float(prepared[1, 0]), float(prepared[100, 0]))
+        self.assertAlmostEqual(float(prepared[-1, 0]), 0.0, places=5)
+        self.assertLess(float(prepared[-2, 0]), float(prepared[-101, 0]))
+
 
 if __name__ == "__main__":
     unittest.main()

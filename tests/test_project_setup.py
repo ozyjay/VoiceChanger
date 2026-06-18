@@ -358,6 +358,54 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_audio_visualisation_widget_zoom_window_follows_playback(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("audio_visualisation_widget", None)
+            from audio_visualisation_widget import AudioVisualisationWidget
+
+            widget = AudioVisualisationWidget()
+            samplerate = 8000
+            audio = np.ones((samplerate * 2, 1), dtype=np.float32) * 0.2
+            widget.set_audio(audio, audio, "Normal", samplerate)
+
+            self.assertEqual(widget.waveform_zoom, 1.0)
+            self.assertEqual(widget._waveform_time_window(), (0.0, 2.0))
+
+            widget.zoom_in_waveform()
+            self.assertEqual(widget.waveform_zoom, 2.0)
+            self.assertEqual(widget._waveform_time_window(), (0.0, 1.0))
+
+            widget.set_playback_progress(0.75)
+            self.assertEqual(widget._waveform_time_window(), (1.0, 2.0))
+
+            widget.reset_waveform_zoom()
+            self.assertEqual(widget.waveform_zoom, 1.0)
+            self.assertEqual(widget._waveform_time_window(), (0.0, 2.0))
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_audio_visualisation_widget_follow_can_be_disabled_for_manual_inspection(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("audio_visualisation_widget", None)
+            from audio_visualisation_widget import AudioVisualisationWidget
+
+            widget = AudioVisualisationWidget()
+            samplerate = 8000
+            audio = np.ones((samplerate * 2, 1), dtype=np.float32) * 0.2
+            widget.set_audio(audio, audio, "Normal", samplerate)
+            widget.zoom_in_waveform()
+            widget.set_waveform_follow_enabled(False)
+            widget.set_playback_progress(0.75)
+
+            self.assertFalse(widget.waveform_follow_enabled)
+            self.assertEqual(widget._waveform_time_window(), (0.0, 1.0))
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_main_window_creates_large_effect_cards_without_dropdown(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
@@ -471,6 +519,37 @@ class ProjectSetupTests(unittest.TestCase):
 
             self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Echo → Robot")
             self.assertIn("Choose effects", window.status_label.text)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_main_window_exposes_waveform_zoom_and_follow_controls(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.zoom_in_button.text(), "Zoom In")
+            self.assertEqual(window.zoom_out_button.text(), "Zoom Out")
+            self.assertEqual(window.zoom_reset_button.text(), "Reset Zoom")
+            self.assertEqual(window.follow_button.text(), "Follow")
+            self.assertTrue(window.follow_button.isChecked())
+
+            window.zoom_in_button.clicked.emit()
+            self.assertEqual(window.visualisation_widget.waveform_zoom, 2.0)
+
+            window.zoom_out_button.clicked.emit()
+            self.assertEqual(window.visualisation_widget.waveform_zoom, 1.0)
+
+            window.zoom_in_button.clicked.emit()
+            window.zoom_reset_button.clicked.emit()
+            self.assertEqual(window.visualisation_widget.waveform_zoom, 1.0)
+
+            window.follow_button.clicked.emit()
+            self.assertFalse(window.visualisation_widget.waveform_follow_enabled)
+            self.assertFalse(window.follow_button.isChecked())
         finally:
             sys.path.remove(str(SRC))
 

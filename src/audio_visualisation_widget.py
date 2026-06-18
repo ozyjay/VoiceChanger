@@ -20,6 +20,8 @@ class AudioVisualisationWidget(QWidget):
         super().__init__(parent)
         self.visualisation_data = None
         self.playback_progress = None
+        self.waveform_zoom = 1.0
+        self.waveform_follow_enabled = True
         self.comparison_panel_titles = ("Sound shape", "Pitch + brightness")
         self.setMinimumHeight(250)
 
@@ -37,6 +39,22 @@ class AudioVisualisationWidget(QWidget):
     def clear(self):
         self.visualisation_data = None
         self.playback_progress = None
+        self.update()
+
+    def zoom_in_waveform(self):
+        self.waveform_zoom = min(8.0, self.waveform_zoom * 2.0)
+        self.update()
+
+    def zoom_out_waveform(self):
+        self.waveform_zoom = max(1.0, self.waveform_zoom / 2.0)
+        self.update()
+
+    def reset_waveform_zoom(self):
+        self.waveform_zoom = 1.0
+        self.update()
+
+    def set_waveform_follow_enabled(self, enabled):
+        self.waveform_follow_enabled = bool(enabled)
         self.update()
 
     def set_playback_progress(self, progress):
@@ -85,6 +103,7 @@ class AudioVisualisationWidget(QWidget):
         )
 
     def _draw_waveform_comparison(self, painter, rect, data, processed, color):
+        x_min, x_max = self._waveform_time_window()
         self._draw_panel_frame(
             painter,
             rect,
@@ -101,6 +120,8 @@ class AudioVisualisationWidget(QWidget):
             -data.waveform_limit,
             data.waveform_limit,
             _transparent("#64748b", 95),
+            x_min=x_min,
+            x_max=x_max,
             width=1,
         )
         self._draw_series(
@@ -111,6 +132,8 @@ class AudioVisualisationWidget(QWidget):
             -data.waveform_limit,
             data.waveform_limit,
             _with_alpha(color, 190),
+            x_min=x_min,
+            x_max=x_max,
             width=2,
         )
         if data.processed is not None:
@@ -122,10 +145,16 @@ class AudioVisualisationWidget(QWidget):
                 -data.waveform_limit,
                 data.waveform_limit,
                 _transparent("#f97316", 165),
+                x_min=x_min,
+                x_max=x_max,
                 width=1,
             )
-        self._draw_playhead(painter, plot_rect)
-        self._draw_axis_labels(painter, rect, f"original grey  effect colour  change orange  gain x{data.display_gain:.1f}", "sound wave")
+        self._draw_playhead(painter, plot_rect, x_min=x_min, x_max=x_max, duration_seconds=data.duration_seconds)
+        if self.waveform_zoom > 1.0:
+            time_label = f"{x_min:.2f}-{x_max:.2f}s  zoom x{self.waveform_zoom:.0f}"
+        else:
+            time_label = "full clip"
+        self._draw_axis_labels(painter, rect, f"{time_label}  original grey  effect colour  change orange  gain x{data.display_gain:.1f}", "sound wave")
 
     def _draw_fft_comparison(self, painter, rect, data, processed, color):
         self._draw_panel_frame(
@@ -253,11 +282,15 @@ class AudioVisualisationWidget(QWidget):
         painter.setPen(QPen(QColor("#e2e8f0"), 1, Qt.PenStyle.DotLine))
         painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
 
-    def _draw_playhead(self, painter, rect):
+    def _draw_playhead(self, painter, rect, x_min=0.0, x_max=1.0, duration_seconds=1.0):
         if self.playback_progress is None:
             return
 
-        x = rect.left() + (self.playback_progress * rect.width())
+        duration_seconds = max(float(duration_seconds), 0.001)
+        playhead_seconds = self.playback_progress * duration_seconds
+        if playhead_seconds < x_min or playhead_seconds > x_max:
+            return
+        x = rect.left() + ((playhead_seconds - x_min) / (x_max - x_min) * rect.width())
         painter.setPen(QPen(QColor("#ef4444"), 3))
         painter.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))
 
@@ -279,6 +312,8 @@ class AudioVisualisationWidget(QWidget):
         painter.setPen(QPen(color, width))
         points = []
         for x_value, y_value in zip(x_values, y_values):
+            if float(x_value) < x_min or float(x_value) > x_max:
+                continue
             x_ratio = (float(x_value) - x_min) / (x_max - x_min)
             y_ratio = (float(y_value) - y_min) / (y_max - y_min)
             x = rect.left() + (x_ratio * rect.width())
@@ -287,6 +322,24 @@ class AudioVisualisationWidget(QWidget):
 
         for index in range(1, len(points)):
             painter.drawLine(points[index - 1], points[index])
+
+    def _waveform_time_window(self):
+        if self.visualisation_data is None:
+            return 0.0, 1.0
+
+        duration = max(float(self.visualisation_data.duration_seconds), 0.001)
+        if self.waveform_zoom <= 1.0:
+            return 0.0, duration
+
+        window = duration / self.waveform_zoom
+        if self.waveform_follow_enabled and self.playback_progress is not None:
+            centre = self.playback_progress * duration
+        else:
+            centre = window / 2.0
+
+        start = max(0.0, min(duration - window, centre - (window / 2.0)))
+        end = min(duration, start + window)
+        return round(start, 6), round(end, 6)
 
 
 def _transparent(color_name, alpha):
