@@ -10,9 +10,9 @@ def apply_effect(audio_data, effect_name, samplerate):
     if effect_name == "Normal":
         processed = audio.copy()
     elif effect_name == "Chipmunk":
-        processed = _frequency_shift(audio, 1.45)
+        processed = _frequency_shift(audio, 1.45, samplerate)
     elif effect_name == "Giant":
-        processed = _frequency_shift(audio, 0.68)
+        processed = _frequency_shift(audio, 0.68, samplerate)
     elif effect_name == "Robot":
         processed = _robot(audio, samplerate)
     elif effect_name == "Radio":
@@ -89,12 +89,12 @@ def _mono(audio):
     return np.mean(audio, axis=1)
 
 
-def _frequency_shift(audio, factor):
-    shifted_channels = [_resample_pitch_channel(audio[:, channel], factor) for channel in range(audio.shape[1])]
+def _frequency_shift(audio, factor, samplerate):
+    shifted_channels = [_resample_pitch_channel(audio[:, channel], factor, samplerate) for channel in range(audio.shape[1])]
     return np.stack(shifted_channels, axis=1)
 
 
-def _resample_pitch_channel(samples, factor):
+def _resample_pitch_channel(samples, factor, samplerate):
     original_length = len(samples)
     if original_length == 0:
         return samples.astype(np.float32)
@@ -106,6 +106,9 @@ def _resample_pitch_channel(samples, factor):
 
     if new_length >= original_length:
         return resampled[:original_length]
+
+    fade_samples = min(max(2, int(float(samplerate) * 0.015)), new_length)
+    resampled[-fade_samples:] *= np.linspace(1.0, 0.0, fade_samples, dtype=np.float32)
 
     output = np.zeros(original_length, dtype=np.float32)
     output[:new_length] = resampled
@@ -134,7 +137,7 @@ def _radio(audio, samplerate):
 
 
 def _alien(audio, samplerate):
-    pitched = _frequency_shift(audio, 1.22)
+    pitched = _frequency_shift(audio, 1.22, samplerate)
     t = np.arange(len(audio), dtype=np.float32).reshape(-1, 1) / float(samplerate)
     shimmer = 0.75 + (0.35 * np.sin(2 * np.pi * 70.0 * t))
     return _echo(pitched * shimmer, samplerate, delay_seconds=0.09, feedback=0.28)

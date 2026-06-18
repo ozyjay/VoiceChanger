@@ -57,6 +57,26 @@ class AudioEffectsTests(unittest.TestCase):
 
         self.assertLess(active_span, 500)
 
+    def test_pitch_shortening_fades_into_padded_tail_without_hard_click(self):
+        samplerate = 8000
+        audio = np.ones((samplerate, 1), dtype=np.float32) * 0.5
+
+        processed = apply_effect(audio, "Chipmunk", samplerate=samplerate)
+        largest_step = float(np.max(np.abs(np.diff(processed.reshape(-1)))))
+
+        self.assertLess(largest_step, 0.08)
+
+    def test_pitch_shortening_stays_smooth_inside_effect_chains(self):
+        samplerate = 8000
+        audio = sine_wave(220, samplerate=samplerate, seconds=1.0, amplitude=0.45)
+        processed = audio
+        for effect_name in ("Chipmunk", "Robot", "Echo"):
+            processed = apply_effect(processed, effect_name, samplerate=samplerate)
+
+        largest_step = float(np.max(np.abs(np.diff(processed.reshape(-1)))))
+
+        self.assertLess(largest_step, 0.25)
+
     def test_giant_lowers_dominant_frequency_without_changing_clip_length(self):
         audio = sine_wave(260)
 
