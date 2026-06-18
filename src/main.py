@@ -415,12 +415,10 @@ class MainWindow(QMainWindow):
             indicator = "● ON" if selected else "○ OFF"
             led_label = "LED ● ON" if selected else "LED ○ OFF"
             button.setText(
-                f"INPUT ●     ● OUTPUT\n"
-                f"LEVEL   TONE   MIX\n"
-                f"{led_label}\n"
                 f"{effect_name.upper()}\n"
                 f"{EFFECT_SUBTITLES[effect_name]}\n"
-                f"FOOTSWITCH  {indicator}"
+                f"{led_label}\n"
+                f"{indicator}"
             )
             border_width = 4 if selected else 2
             background = color if selected else "#243044"
@@ -429,8 +427,8 @@ class MainWindow(QMainWindow):
             button.setStyleSheet(
                 f"background: {background}; border: {border_width}px solid {color}; "
                 f"border-top: 5px solid {accent_top}; border-radius: 14px; "
-                f"color: {text_color}; font-size: 12px; font-weight: 900; "
-                f"min-height: 86px; padding: 5px 8px;"
+                f"color: {text_color}; font-size: 13px; font-weight: 900; "
+                f"min-height: 72px; padding: 6px 8px;"
             )
         self.play_filtered_button.setText(self._effect_play_label())
         self.active_chain_label.setText(self._effect_chain_display())

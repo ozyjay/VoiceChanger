@@ -425,6 +425,8 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertFalse(window.effect_buttons["Chipmunk"].isChecked())
             self.assertEqual(window.play_filtered_button.text(), "Play Normal")
             self.assertIn("○ OFF", window.effect_buttons["Chipmunk"].text())
+            self.assertNotIn("INPUT", window.effect_buttons["Chipmunk"].text())
+            self.assertNotIn("OUTPUT", window.effect_buttons["Chipmunk"].text())
         finally:
             sys.path.remove(str(SRC))
 
@@ -467,17 +469,22 @@ class ProjectSetupTests(unittest.TestCase):
             window = MainWindow()
             echo_button = window.effect_buttons["Echo"]
 
-            self.assertIn("INPUT", echo_button.text())
-            self.assertIn("OUTPUT", echo_button.text())
-            self.assertIn("LEVEL   TONE   MIX", echo_button.text())
-            self.assertIn("FOOTSWITCH", echo_button.text())
-            self.assertIn("min-height: 86px", echo_button.style_sheet)
+            self.assertIn("ECHO", echo_button.text())
+            self.assertIn("bouncy repeat", echo_button.text())
+            self.assertIn("LED ○ OFF", echo_button.text())
+            self.assertIn("○ OFF", echo_button.text())
+            self.assertNotIn("LEVEL", echo_button.text())
+            self.assertNotIn("TONE", echo_button.text())
+            self.assertNotIn("MIX", echo_button.text())
+            self.assertNotIn("FOOTSWITCH", echo_button.text())
+            self.assertIn("min-height: 72px", echo_button.style_sheet)
             self.assertIn("border-radius: 14px", echo_button.style_sheet)
 
             with redirect_stdout(StringIO()):
                 window.effect_selected("Echo")
 
             self.assertIn("LED ● ON", echo_button.text())
+            self.assertIn("● ON", echo_button.text())
             self.assertIn("border-top: 5px solid #fef3c7", echo_button.style_sheet)
         finally:
             sys.path.remove(str(SRC))
@@ -493,9 +500,10 @@ class ProjectSetupTests(unittest.TestCase):
             window = MainWindow()
 
             self.assertEqual(window.geometry, (100, 100, 1100, 760))
-            self.assertLessEqual(window.visualisation_widget.minimum_height, 260)
+            self.assertGreaterEqual(window.visualisation_widget.minimum_height, 340)
+            self.assertLessEqual(window.visualisation_widget.minimum_height, 380)
             for button in window.effect_buttons.values():
-                self.assertIn("min-height: 86px", button.style_sheet)
+                self.assertIn("min-height: 72px", button.style_sheet)
         finally:
             sys.path.remove(str(SRC))
 

@@ -28,10 +28,10 @@ class VisualisationDataTests(unittest.TestCase):
 
         self.assertEqual(data.effect_name, "Chipmunk")
         self.assertAlmostEqual(data.duration_seconds, 1.0, places=3)
-        self.assertEqual(len(data.original.waveform_times), 400)
-        self.assertEqual(len(data.original.waveform_amplitudes), 400)
-        self.assertEqual(len(data.processed.waveform_times), 400)
-        self.assertEqual(len(data.processed.waveform_amplitudes), 400)
+        self.assertEqual(len(data.original.waveform_times), 2400)
+        self.assertEqual(len(data.original.waveform_amplitudes), 2400)
+        self.assertEqual(len(data.processed.waveform_times), 2400)
+        self.assertEqual(len(data.processed.waveform_amplitudes), 2400)
 
     def test_limits_fft_to_voice_band(self):
         samplerate = 12000
@@ -97,6 +97,18 @@ class VisualisationDataTests(unittest.TestCase):
 
         self.assertEqual(len(data.difference_waveform_amplitudes), len(data.original.waveform_amplitudes))
         self.assertGreater(float(np.max(np.abs(data.difference_waveform_amplitudes))), 0.02)
+
+    def test_waveform_keeps_enough_points_for_zoomed_inspection(self):
+        samplerate = 12000
+        original = sine_wave(300, samplerate=samplerate, seconds=2.0, amplitude=0.3)
+
+        data = build_visualisation_data(original, original, samplerate, "Normal")
+
+        zoomed_window_seconds = data.duration_seconds / 8.0
+        points_in_zoomed_window = np.count_nonzero(
+            data.original.waveform_times <= zoomed_window_seconds
+        )
+        self.assertGreaterEqual(points_in_zoomed_window, 250)
 
     def test_fft_display_magnitudes_lift_quieter_harmonics(self):
         samplerate = 12000

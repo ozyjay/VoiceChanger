@@ -36,7 +36,7 @@ def build_visualisation_data(
     samplerate,
     effect_name,
     max_frequency=5000,
-    waveform_points=400,
+    waveform_points=2400,
 ):
     waveform_limit = _waveform_limit(original_audio, processed_audio)
     original = _build_series(original_audio, samplerate, max_frequency, waveform_points, waveform_limit)

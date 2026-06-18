@@ -23,7 +23,7 @@ class AudioVisualisationWidget(QWidget):
         self.waveform_zoom = 1.0
         self.waveform_follow_enabled = True
         self.comparison_panel_titles = ("Sound shape", "Pitch + brightness")
-        self.setMinimumHeight(250)
+        self.setMinimumHeight(350)
 
     def set_audio(self, original_audio, processed_audio, effect_name, samplerate):
         self.visualisation_data = build_visualisation_data(
