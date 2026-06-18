@@ -25,6 +25,14 @@ EFFECT_SUBTITLES = {
     "Alien": "space wobble",
     "Echo": "bouncy repeat",
 }
+EFFECT_EXPLANATIONS = {
+    "Chipmunk": "Chipmunk raises the pitch so the voice sounds smaller and squeakier.",
+    "Giant": "Giant lowers the pitch so the voice sounds deeper and bigger.",
+    "Robot": "Robot adds fast modulation to make the voice sound mechanical.",
+    "Radio": "Radio filters the voice band so it sounds like an old speaker.",
+    "Alien": "Alien combines pitch, wobble, and echo for a strange space voice.",
+    "Echo": "Echo adds a delayed copy of the voice so words bounce back.",
+}
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -97,6 +105,14 @@ class MainWindow(QMainWindow):
             "padding: 9px 12px; font-size: 18px; font-weight: 900; color: #e0f2fe;"
         )
         layout.addWidget(self.active_chain_label)
+
+        self.explanation_label = QLabel(self._effect_explanation())
+        self.explanation_label.setObjectName("explanationLabel")
+        self.explanation_label.setStyleSheet(
+            "background: #172033; border: 2px solid #475569; border-radius: 8px; "
+            "padding: 9px 12px; font-size: 15px; font-weight: 700; color: #f8fafc;"
+        )
+        layout.addWidget(self.explanation_label)
 
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(10)
@@ -308,6 +324,7 @@ class MainWindow(QMainWindow):
             )
         self.play_filtered_button.setText(self._effect_play_label())
         self.active_chain_label.setText(self._effect_chain_display())
+        self.explanation_label.setText(self._effect_explanation())
 
     def _normalise_effect_names(self, effect_names):
         if isinstance(effect_names, str):
@@ -325,6 +342,14 @@ class MainWindow(QMainWindow):
         if not names:
             return "ACTIVE CHAIN: Normal voice"
         return f"ACTIVE CHAIN: {' → '.join(names)}"
+
+    def _effect_explanation(self, effect_names=None):
+        names = self.selected_effect_names if effect_names is None else self._normalise_effect_names(effect_names)
+        if not names:
+            return "What changed? Nothing yet: this is your plain voice, ready for comparison."
+        if len(names) == 1:
+            return f"What changed? {EFFECT_EXPLANATIONS[names[0]]}"
+        return f"What changed? Effects are chained in order: {' → '.join(names)}. Each pedal changes the sound before the next one hears it."
 
     def _effect_play_label(self, effect_names=None):
         names = self.selected_effect_names if effect_names is None else self._normalise_effect_names(effect_names)

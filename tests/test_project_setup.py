@@ -432,6 +432,32 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_teaching_explanation_panel_tracks_active_effect_chain(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertIn("What changed?", window.explanation_label.text)
+            self.assertIn("plain voice", window.explanation_label.text)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Chipmunk")
+
+            self.assertIn("raises the pitch", window.explanation_label.text)
+            self.assertIn("squeakier", window.explanation_label.text)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Echo")
+
+            self.assertIn("chained in order", window.explanation_label.text)
+            self.assertIn("Chipmunk → Echo", window.explanation_label.text)
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_effect_cards_toggle_multiple_effects_and_reprocess_audio(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
