@@ -48,6 +48,11 @@ class MainWindow(QMainWindow):
         self.playback_elapsed_seconds = 0.0
         self.playback_duration_seconds = 0.0
         self.playback_ready_status = "Ready"
+        self.recording_limit_seconds = 5
+        self.recording_limit_timer = QTimer(self)
+        self.recording_limit_timer.timeout.connect(lambda: self._stop_recording(auto_stopped=True))
+        self.recording_countdown_timer = QTimer(self)
+        self.recording_countdown_timer.timeout.connect(self._update_recording_countdown)
 
         self.initUI()
 
@@ -131,6 +136,7 @@ class MainWindow(QMainWindow):
         self.play_filtered_button.clicked.connect(self.play_filtered)
         self.reset_button = QPushButton('Reset / Next Visitor')
         self.reset_button.setObjectName('resetButton')
+        self.reset_button.clicked.connect(self._reset_for_next_visitor)
 
         controls_layout.addWidget(self.record_button)
         controls_layout.addWidget(self.play_original_button)
@@ -158,36 +164,37 @@ class MainWindow(QMainWindow):
 
     def start_recording(self):
         if self.is_recording:
-            print("Stopping recording...")
-            self.recording_stream.stop()
-            self.recording_stream.close()
-            self.is_recording = False
-            self.record_button.setText("Record")
-            if self.audio_data is not None:
-                self.process_audio(self.selected_effect_names)
-                self._set_status(f"Ready: {self.selected_effect_name} is selected")
-            else:
-                self._set_status("No sound captured. Tap Record to try again")
-            self._update_control_state()
+            self._stop_recording(auto_stopped=False)
             return
 
         print("Starting recording...")
-        sd.stop()
-        self.playback_timer.stop()
-        self.playback_elapsed_seconds = 0.0
-        self.is_recording = True
-        self.audio_data = None
-        self.audio_data_processed = None
-        self.visualisation_widget.clear()
-        self._set_status("Recording... tap Stop when you are done")
-        
-        # Set up the recording callback
-        self.recording_callback = self._record_audio_callback
-        self.recording_stream = sd.InputStream(samplerate=self.samplerate, channels=1, callback=self.recording_callback)
-        self.recording_stream.start()
-        
-        self.record_button.setText("Stop")
-        self._update_control_state()
+        try:
+            sd.stop()
+            self.playback_timer.stop()
+            self.playback_elapsed_seconds = 0.0
+            self.audio_data = None
+            self.audio_data_processed = None
+            self.visualisation_widget.clear()
+            self._set_status(f"Recording... {self.recording_limit_seconds} seconds left")
+
+            self.recording_callback = self._record_audio_callback
+            self.recording_stream = sd.InputStream(samplerate=self.samplerate, channels=1, callback=self.recording_callback)
+            self.recording_stream.start()
+
+            self.is_recording = True
+            self.record_button.setText("Stop")
+            self._start_recording_timeout()
+            self._update_control_state()
+        except Exception as e:
+            print(f"Error starting microphone input: {e}")
+            self.is_recording = False
+            self.record_button.setText("Record")
+            self.recording_limit_timer.stop()
+            self.recording_countdown_timer.stop()
+            self.audio_data = None
+            self.audio_data_processed = None
+            self._set_status("Microphone unavailable. Check input device and try again")
+            self._update_control_state()
 
     def _record_audio_callback(self, indata, frames, time, status):
         """This is called by sounddevice for each audio block."""
@@ -199,6 +206,42 @@ class MainWindow(QMainWindow):
             self.audio_data = np.copy(indata)
         else:
             self.audio_data = np.concatenate((self.audio_data, np.copy(indata)), axis=0)
+
+    def _start_recording_timeout(self):
+        self.recording_limit_timer.start(self.recording_limit_seconds * 1000)
+        self.recording_countdown_timer.start(250)
+
+    def _stop_recording(self, auto_stopped=False):
+        if not self.is_recording:
+            return
+
+        print("Stopping recording...")
+        self.recording_limit_timer.stop()
+        self.recording_countdown_timer.stop()
+        try:
+            self.recording_stream.stop()
+            self.recording_stream.close()
+        except Exception as e:
+            print(f"Error stopping microphone input: {e}")
+
+        self.is_recording = False
+        self.record_button.setText("Record")
+        if self.audio_data is not None and len(self.audio_data) > 0:
+            self.process_audio(self.selected_effect_names)
+            if auto_stopped:
+                self._set_status("Recording captured. Step 3: Play Original or hear the effect")
+            else:
+                self._set_status(f"Ready: {self.selected_effect_name} is selected")
+        else:
+            self._set_status("No sound captured. Tap Record to try again")
+        self._update_control_state()
+
+    def _update_recording_countdown(self):
+        captured_seconds = 0.0
+        if self.audio_data is not None:
+            captured_seconds = len(self.audio_data) / float(self.samplerate)
+        seconds_left = max(0.0, self.recording_limit_seconds - captured_seconds)
+        self._set_status(f"Recording... {seconds_left:.1f} seconds left")
 
     def play_original(self):
         if self.is_recording:
@@ -287,6 +330,8 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"Error playing audio: {e}")
             self._set_status("Audio playback failed")
+            self.playback_timer.stop()
+            self._update_control_state()
 
     def _advance_playback(self):
         self.playback_elapsed_seconds += 0.033
@@ -304,8 +349,33 @@ class MainWindow(QMainWindow):
         can_play = has_audio and not self.is_recording
         self.play_original_button.setEnabled(can_play)
         self.play_filtered_button.setEnabled(can_play)
+        self.record_button.setEnabled(True)
+        self.reset_button.setEnabled(True)
         for button in self.effect_buttons.values():
             button.setEnabled(not self.is_recording)
+
+    def _reset_for_next_visitor(self):
+        sd.stop()
+        self.playback_timer.stop()
+        self.recording_limit_timer.stop()
+        self.recording_countdown_timer.stop()
+        if self.is_recording:
+            try:
+                self.recording_stream.stop()
+                self.recording_stream.close()
+            except Exception as e:
+                print(f"Error stopping microphone input during reset: {e}")
+        self.is_recording = False
+        self.record_button.setText("Record")
+        self.audio_data = None
+        self.audio_data_processed = None
+        self.visualisation_widget.clear()
+        # Reset effects for public demos so each visitor starts from the same clear Normal voice state.
+        self.selected_effect_names = []
+        self.selected_effect_name = self._effect_chain_name()
+        self._refresh_effect_cards()
+        self._set_status("Step 1: Record your voice")
+        self._update_control_state()
 
     def _refresh_effect_cards(self):
         for effect_name, button in self.effect_buttons.items():

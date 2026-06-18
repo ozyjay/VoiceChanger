@@ -510,13 +510,17 @@ class ProjectSetupTests(unittest.TestCase):
 
             self.assertFalse(window.play_original_button.isEnabled())
             self.assertFalse(window.play_filtered_button.isEnabled())
+            self.assertTrue(window.recording_limit_timer.isActive())
+            self.assertEqual(window.recording_limit_timer.interval, window.recording_limit_seconds * 1000)
 
             window.audio_data = np.ones((8, 1), dtype=np.float32)
             with redirect_stdout(StringIO()):
-                window.start_recording()
+                window._stop_recording(auto_stopped=True)
 
             self.assertTrue(window.play_original_button.isEnabled())
             self.assertTrue(window.play_filtered_button.isEnabled())
+            self.assertFalse(window.recording_limit_timer.isActive())
+            self.assertFalse(window.recording_countdown_timer.isActive())
         finally:
             sys.path.remove(str(SRC))
 
@@ -637,6 +641,84 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(sounddevice.stop_calls, 0)
             self.assertEqual(sounddevice.play_calls, [])
             self.assertEqual(sounddevice.wait_calls, 0)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_reset_for_next_visitor_stops_audio_and_returns_to_clean_start(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            with redirect_stdout(StringIO()):
+                window.start_recording()
+            window.audio_data = np.ones((8, 1), dtype=np.float32)
+            window.audio_data_processed = np.ones((8, 1), dtype=np.float32)
+            window.selected_effect_names = ["Robot", "Echo"]
+            window._refresh_effect_cards()
+
+            with redirect_stdout(StringIO()):
+                window._reset_for_next_visitor()
+
+            sounddevice = sys.modules["sounddevice"]
+            self.assertEqual(sounddevice.stop_calls, 2)
+            self.assertFalse(window.is_recording)
+            self.assertIsNone(window.audio_data)
+            self.assertIsNone(window.audio_data_processed)
+            self.assertIsNone(window.visualisation_widget.visualisation_data)
+            self.assertEqual(window.selected_effect_names, [])
+            self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Normal voice")
+            self.assertEqual(window.play_filtered_button.text(), "Play Normal")
+            self.assertIn("Step 1", window.status_label.text)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_recording_stream_failure_recovers_buttons_and_status(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            class BrokenInputStream:
+                def __init__(self, *args, **kwargs):
+                    raise RuntimeError("no microphone")
+
+            sys.modules["sounddevice"].InputStream = BrokenInputStream
+            window = MainWindow()
+
+            with redirect_stdout(StringIO()):
+                window.start_recording()
+
+            self.assertFalse(window.is_recording)
+            self.assertEqual(window.record_button.text(), "Record")
+            self.assertFalse(window.recording_limit_timer.isActive())
+            self.assertIn("Microphone unavailable", window.status_label.text)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_playback_failure_recovers_status_without_starting_timer(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            def broken_play(*args, **kwargs):
+                raise RuntimeError("no speaker")
+
+            sys.modules["sounddevice"].play = broken_play
+            window = MainWindow()
+            window.audio_data = np.ones((8, 1), dtype=np.float32)
+
+            with redirect_stdout(StringIO()):
+                window.play_original()
+
+            self.assertFalse(window.playback_timer.isActive())
+            self.assertIn("Audio playback failed", window.status_label.text)
+            self.assertTrue(window.play_original_button.isEnabled())
         finally:
             sys.path.remove(str(SRC))
 

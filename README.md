@@ -1,31 +1,42 @@
 # VoiceChanger
 
-Local Open Day demo for recording, transforming, playing, and visualising voice audio.
+Local, offline PySide6 Open Day demo for recording, transforming, playing, and visualising short voice clips.
 
 ## Current Status
 
-This project is currently a PySide6 GUI demo in early implementation. It has:
+The app is now a working `Voice Changer Live` demo with a playful pedalboard-style interface:
 
-- A main window titled `Open Day Voice Effects Demo`
-- Buttons for recording, playing the original audio, and playing filtered audio
-- A dropdown of planned effects: Normal, Chipmunk, Giant, Robot, Radio, Alien, Echo
-- Basic microphone recording and playback through `sounddevice`
-- Early placeholder audio effects, with Echo partially implemented
-- A placeholder area for future waveform and FFT visualisation
+- Record a short voice clip from the microphone.
+- Automatically stop recording after about 5 seconds for reliable public demos.
+- Play the original clip.
+- Toggle one or more effect pedals: Chipmunk, Giant, Robot, Radio, Alien, and Echo.
+- Play the processed result with a dynamic button label such as `Play Normal`, `Play Echo`, or `Play Chain`.
+- See the current `ACTIVE CHAIN` near the top of the window.
+- Read a short plain-English `What changed?` explanation for the selected effect chain.
+- Compare original and processed audio with waveform and FFT visualisations.
+- Use `Reset / Next Visitor` to clear audio and return to a clean Normal voice starting state.
 
-The visualisation logic and most effects are not implemented yet.
+The demo remains local and offline. It uses `sounddevice` for microphone and speaker access, NumPy for audio processing, and PySide6 for the GUI.
 
 ## Project Layout
 
 ```text
 src/
-  main.py   # Main PySide6 window and runnable entry point
-  gui.py    # Compatibility shim exposing MainWindow
+  main.py                       # Main PySide6 window and runnable entry point
+  gui.py                        # Compatibility shim exposing MainWindow
+  audio_effects.py              # Audio effect implementations and audio helpers
+  audio_visualisation_widget.py # PySide6 waveform/FFT comparison widget
+  visualisation_data.py         # Pure visualisation data preparation
+tests/
+  test_audio_effects.py
+  test_project_setup.py
+  test_visualisation_data.py
 ```
 
 ## Requirements
 
 - Python 3.12.13 via pyenv
+- Poetry
 - PySide6
 - NumPy
 - sounddevice
@@ -60,9 +71,22 @@ Run the GUI:
 ./scripts/run.sh
 ```
 
+## Demo Operator Flow
+
+1. Run setup with `./scripts/setup.sh`.
+2. Run tests with `./scripts/test.sh`.
+3. Run the app with `./scripts/run.sh`.
+4. Ask the visitor to press `Record` and say a short phrase. Recording auto-stops after about 5 seconds.
+5. Toggle one or more bright effect pedals.
+6. Use `Play Original` and the processed playback button to compare the voices.
+7. Point out the `ACTIVE CHAIN`, `What changed?` panel, waveform, and FFT comparison.
+8. Press `Reset / Next Visitor` before the next visitor.
+
 ## Development Notes
 
 - Keep edits small and verify immediately.
-- Prefer adding behaviour in stages: UI wiring, audio I/O, effects, visualisation, packaging.
-- Avoid deleting `src/gui.py` unless the project entry-point structure is deliberately changed.
+- Preserve the PySide6 desktop direction.
+- Keep the audio effects engine local and offline.
+- Preserve multi-effect stacking.
+- Avoid deleting `src/gui.py` unless the entry-point structure is deliberately changed.
 - Review `docs/ROADMAP.md` before adding larger features.
