@@ -409,6 +409,31 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_effect_pedals_use_guitar_stompbox_visual_cues(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            echo_button = window.effect_buttons["Echo"]
+
+            self.assertIn("INPUT", echo_button.text())
+            self.assertIn("OUTPUT", echo_button.text())
+            self.assertIn("LEVEL   TONE   MIX", echo_button.text())
+            self.assertIn("FOOTSWITCH", echo_button.text())
+            self.assertIn("min-height: 132px", echo_button.style_sheet)
+            self.assertIn("border-radius: 14px", echo_button.style_sheet)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Echo")
+
+            self.assertIn("LED ● ON", echo_button.text())
+            self.assertIn("border-top: 5px solid #fef3c7", echo_button.style_sheet)
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_open_day_stage_layout_shows_header_chain_and_reset_controls(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
