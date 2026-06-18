@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         self.audio_data_processed = None
         self.is_recording = False
         self.samplerate = 44100
-        self.selected_effect_names = [EFFECT_CARD_NAMES[0]]
+        self.selected_effect_names = []
         self.selected_effect_name = self._effect_chain_name()
         self.playback_timer = QTimer(self)
         self.playback_timer.timeout.connect(self._advance_playback)
@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         self.title_label.setStyleSheet("font-size: 28px; font-weight: 800; color: #f8fafc;")
         layout.addWidget(self.title_label)
 
-        self.status_label = QLabel("Tap Record to start")
+        self.status_label = QLabel("Step 1: Record your voice")
         self.status_label.setObjectName("statusLabel")
         self.status_label.setStyleSheet(
             "background: #0f172a; border: 2px solid #334155; border-radius: 8px; "
@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
         self.play_original_button = QPushButton('Play Original')
         self.play_original_button.setObjectName('playOriginalButton')
         self.play_original_button.clicked.connect(self.play_original)
-        self.play_filtered_button = QPushButton('Play Effect')
+        self.play_filtered_button = QPushButton(self._effect_play_label())
         self.play_filtered_button.setObjectName('playFilteredButton')
         self.play_filtered_button.clicked.connect(self.play_filtered)
 
@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         effects_layout.setSpacing(10)
         self.effect_buttons = {}
         for index, effect_name in enumerate(EFFECT_CARD_NAMES):
-            button = QPushButton(f"{effect_name}\n{EFFECT_SUBTITLES[effect_name]}")
+            button = QPushButton()
             button.setObjectName(f"effectButton{effect_name}")
             button.setCheckable(True)
             button.clicked.connect(lambda _checked=False, name=effect_name: self.effect_selected(name))
@@ -285,13 +285,17 @@ class MainWindow(QMainWindow):
             selected = effect_name in self.selected_effect_names
             button.setChecked(selected)
             color = EFFECT_COLORS[effect_name]
+            indicator = "● ON" if selected else "○ OFF"
+            button.setText(f"{effect_name}\n{EFFECT_SUBTITLES[effect_name]}\n{indicator}")
             border_width = 4 if selected else 2
-            background = "#172033" if selected else "#1f2937"
+            background = color if selected else "#1f2937"
+            text_color = "#111827" if selected else "#f8fafc"
             button.setStyleSheet(
                 f"background: {background}; border: {border_width}px solid {color}; "
-                f"border-radius: 9px; color: #f8fafc; font-size: 17px; "
+                f"border-radius: 9px; color: {text_color}; font-size: 17px; "
                 f"font-weight: 800; min-height: 58px; padding: 6px;"
             )
+        self.play_filtered_button.setText(self._effect_play_label())
 
     def _normalise_effect_names(self, effect_names):
         if isinstance(effect_names, str):
@@ -303,6 +307,14 @@ class MainWindow(QMainWindow):
         if not names:
             return "Normal"
         return " + ".join(names)
+
+    def _effect_play_label(self, effect_names=None):
+        names = self.selected_effect_names if effect_names is None else self._normalise_effect_names(effect_names)
+        if not names:
+            return "Play Normal"
+        if len(names) == 1:
+            return f"Play {names[0]}"
+        return "Play Chain"
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

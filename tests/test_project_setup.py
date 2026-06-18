@@ -372,9 +372,40 @@ class ProjectSetupTests(unittest.TestCase):
                 set(window.effect_buttons),
                 {"Chipmunk", "Giant", "Robot", "Radio", "Alien", "Echo"},
             )
-            self.assertEqual(window.selected_effect_names, ["Chipmunk"])
-            self.assertEqual(window.selected_effect_name, "Chipmunk")
-            self.assertTrue(window.effect_buttons["Chipmunk"].isChecked())
+            self.assertEqual(window.selected_effect_names, [])
+            self.assertEqual(window.selected_effect_name, "Normal")
+            self.assertFalse(window.effect_buttons["Chipmunk"].isChecked())
+            self.assertEqual(window.play_filtered_button.text(), "Play Normal")
+            self.assertIn("○ OFF", window.effect_buttons["Chipmunk"].text())
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_effect_pedals_show_strong_on_state_and_dynamic_play_label(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Echo")
+
+            self.assertEqual(window.selected_effect_names, ["Echo"])
+            self.assertEqual(window.selected_effect_name, "Echo")
+            self.assertTrue(window.effect_buttons["Echo"].isChecked())
+            self.assertIn("● ON", window.effect_buttons["Echo"].text())
+            self.assertIn("background: #ef4444", window.effect_buttons["Echo"].style_sheet)
+            self.assertEqual(window.play_filtered_button.text(), "Play Echo")
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Robot")
+
+            self.assertEqual(window.selected_effect_names, ["Echo", "Robot"])
+            self.assertEqual(window.selected_effect_name, "Echo + Robot")
+            self.assertIn("● ON", window.effect_buttons["Robot"].text())
+            self.assertEqual(window.play_filtered_button.text(), "Play Chain")
         finally:
             sys.path.remove(str(SRC))
 
@@ -394,20 +425,22 @@ class ProjectSetupTests(unittest.TestCase):
             with redirect_stdout(StringIO()):
                 window.effect_selected("Robot")
 
-            self.assertEqual(window.selected_effect_names, ["Chipmunk", "Robot"])
-            self.assertEqual(window.selected_effect_name, "Chipmunk + Robot")
+            self.assertEqual(window.selected_effect_names, ["Robot"])
+            self.assertEqual(window.selected_effect_name, "Robot")
             self.assertTrue(window.effect_buttons["Robot"].isChecked())
-            self.assertTrue(window.effect_buttons["Chipmunk"].isChecked())
-            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Chipmunk + Robot")
+            self.assertFalse(window.effect_buttons["Chipmunk"].isChecked())
+            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Robot")
             self.assertIn("Robot", window.status_label.text)
 
             with redirect_stdout(StringIO()):
-                window.effect_selected("Chipmunk")
+                window.effect_selected("Echo")
 
-            self.assertEqual(window.selected_effect_names, ["Robot"])
+            self.assertEqual(window.selected_effect_names, ["Robot", "Echo"])
             self.assertFalse(window.effect_buttons["Chipmunk"].isChecked())
             self.assertTrue(window.effect_buttons["Robot"].isChecked())
-            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Robot")
+            self.assertTrue(window.effect_buttons["Echo"].isChecked())
+            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Robot + Echo")
+            self.assertEqual(window.play_filtered_button.text(), "Play Chain")
         finally:
             sys.path.remove(str(SRC))
 
