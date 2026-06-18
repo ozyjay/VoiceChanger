@@ -86,20 +86,20 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(centralWidget)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(9)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(6)
         centralWidget.setLayout(layout)
 
         self.title_label = QLabel("Voice Changer Live")
         self.title_label.setObjectName("titleLabel")
-        self.title_label.setStyleSheet("font-size: 32px; font-weight: 900; color: #f8fafc;")
+        self.title_label.setStyleSheet("font-size: 28px; font-weight: 900; color: #f8fafc;")
         layout.addWidget(self.title_label)
 
         self.status_label = QLabel("Step 1: Record your voice")
         self.status_label.setObjectName("statusLabel")
         self.status_label.setStyleSheet(
             "background: #0f172a; border: 2px solid #334155; border-radius: 8px; "
-            "padding: 8px 12px; font-size: 16px; font-weight: 700; color: #cbd5e1;"
+            "padding: 5px 10px; font-size: 15px; font-weight: 700; color: #cbd5e1;"
         )
         layout.addWidget(self.status_label)
 
@@ -107,7 +107,7 @@ class MainWindow(QMainWindow):
         self.active_chain_label.setObjectName("activeChainLabel")
         self.active_chain_label.setStyleSheet(
             "background: #020617; border: 2px solid #38bdf8; border-radius: 8px; "
-            "padding: 9px 12px; font-size: 18px; font-weight: 900; color: #e0f2fe;"
+            "padding: 6px 10px; font-size: 16px; font-weight: 900; color: #e0f2fe;"
         )
         layout.addWidget(self.active_chain_label)
 
@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         self.explanation_label.setObjectName("explanationLabel")
         self.explanation_label.setStyleSheet(
             "background: #172033; border: 2px solid #475569; border-radius: 8px; "
-            "padding: 9px 12px; font-size: 15px; font-weight: 700; color: #f8fafc;"
+            "padding: 6px 10px; font-size: 14px; font-weight: 700; color: #f8fafc;"
         )
         layout.addWidget(self.explanation_label)
 
@@ -125,7 +125,7 @@ class MainWindow(QMainWindow):
         self.record_button.setObjectName('recordButton')
         self.record_button.setStyleSheet(
             "background: #dc2626; border-color: #f87171; color: #ffffff; "
-            "font-size: 20px; min-height: 46px;"
+            "font-size: 18px; min-height: 40px;"
         )
         self.record_button.clicked.connect(self.start_recording)
         self.play_original_button = QPushButton('Play Original')
@@ -385,14 +385,12 @@ class MainWindow(QMainWindow):
             indicator = "● ON" if selected else "○ OFF"
             led_label = "LED ● ON" if selected else "LED ○ OFF"
             button.setText(
-                f"INPUT        OUTPUT\n"
+                f"INPUT ●     ● OUTPUT\n"
                 f"LEVEL   TONE   MIX\n"
-                f"●      ●      ●\n"
                 f"{led_label}\n"
                 f"{effect_name.upper()}\n"
                 f"{EFFECT_SUBTITLES[effect_name]}\n"
-                f"FOOTSWITCH\n"
-                f"{indicator}"
+                f"FOOTSWITCH  {indicator}"
             )
             border_width = 4 if selected else 2
             background = color if selected else "#243044"
@@ -401,8 +399,8 @@ class MainWindow(QMainWindow):
             button.setStyleSheet(
                 f"background: {background}; border: {border_width}px solid {color}; "
                 f"border-top: 5px solid {accent_top}; border-radius: 14px; "
-                f"color: {text_color}; font-size: 14px; font-weight: 900; "
-                f"min-height: 132px; padding: 8px 10px;"
+                f"color: {text_color}; font-size: 12px; font-weight: 900; "
+                f"min-height: 86px; padding: 5px 8px;"
             )
         self.play_filtered_button.setText(self._effect_play_label())
         self.active_chain_label.setText(self._effect_chain_display())

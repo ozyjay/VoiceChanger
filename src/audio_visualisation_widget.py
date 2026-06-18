@@ -21,7 +21,7 @@ class AudioVisualisationWidget(QWidget):
         self.visualisation_data = None
         self.playback_progress = None
         self.comparison_panel_titles = ("Sound shape", "Pitch + brightness")
-        self.setMinimumHeight(520)
+        self.setMinimumHeight(250)
 
     def set_audio(self, original_audio, processed_audio, effect_name, samplerate):
         self.visualisation_data = build_visualisation_data(

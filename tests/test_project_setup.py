@@ -423,7 +423,7 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertIn("OUTPUT", echo_button.text())
             self.assertIn("LEVEL   TONE   MIX", echo_button.text())
             self.assertIn("FOOTSWITCH", echo_button.text())
-            self.assertIn("min-height: 132px", echo_button.style_sheet)
+            self.assertIn("min-height: 86px", echo_button.style_sheet)
             self.assertIn("border-radius: 14px", echo_button.style_sheet)
 
             with redirect_stdout(StringIO()):
@@ -431,6 +431,23 @@ class ProjectSetupTests(unittest.TestCase):
 
             self.assertIn("LED ● ON", echo_button.text())
             self.assertIn("border-top: 5px solid #fef3c7", echo_button.style_sheet)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_stage_layout_keeps_fixed_minimum_heights_inside_demo_window(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            sys.modules.pop("audio_visualisation_widget", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.geometry, (100, 100, 1100, 760))
+            self.assertLessEqual(window.visualisation_widget.minimum_height, 260)
+            for button in window.effect_buttons.values():
+                self.assertIn("min-height: 86px", button.style_sheet)
         finally:
             sys.path.remove(str(SRC))
 
