@@ -171,17 +171,18 @@ class MainWindow(QMainWindow):
         self.zoom_reset_button = QPushButton("Reset Zoom")
         self.zoom_reset_button.setObjectName("zoomResetButton")
         self.zoom_reset_button.clicked.connect(lambda _checked=False: self.visualisation_widget.reset_waveform_zoom())
-        self.follow_button = QPushButton("Follow")
+        self.follow_button = QPushButton()
         self.follow_button.setObjectName("followButton")
         self.follow_button.setCheckable(True)
-        self.follow_button.setChecked(True)
         self.follow_button.clicked.connect(lambda _checked=False: self._toggle_waveform_follow())
-        for button in (self.zoom_in_button, self.zoom_out_button, self.zoom_reset_button, self.follow_button):
+        for button in (self.zoom_in_button, self.zoom_out_button, self.zoom_reset_button):
             button.setStyleSheet(
                 "background: #111827; border: 2px solid #475569; border-radius: 7px; "
                 "font-size: 13px; font-weight: 800; min-height: 28px; padding: 4px 10px;"
             )
             zoom_layout.addWidget(button)
+        self._set_waveform_follow_button_checked(True)
+        zoom_layout.addWidget(self.follow_button)
         layout.addLayout(zoom_layout)
         layout.addWidget(self.visualisation_widget, 1)
         self._refresh_effect_cards()
@@ -373,10 +374,21 @@ class MainWindow(QMainWindow):
     def _toggle_waveform_follow(self):
         enabled = not self.visualisation_widget.waveform_follow_enabled
         self.visualisation_widget.set_waveform_follow_enabled(enabled)
-        self.follow_button.setChecked(enabled)
+        self._set_waveform_follow_button_checked(enabled)
 
     def _set_waveform_follow_button_checked(self, enabled):
         self.follow_button.setChecked(enabled)
+        self.follow_button.setText("Follow: On" if enabled else "Follow: Off")
+        if enabled:
+            self.follow_button.setStyleSheet(
+                "background: #0f2a3a; border: 2px solid #38bdf8; border-radius: 7px; "
+                "font-size: 13px; font-weight: 900; min-height: 28px; padding: 4px 10px;"
+            )
+        else:
+            self.follow_button.setStyleSheet(
+                "background: #111827; border: 2px solid #475569; border-radius: 7px; "
+                "font-size: 13px; font-weight: 800; min-height: 28px; padding: 4px 10px;"
+            )
 
     def _update_control_state(self):
         has_audio = self.audio_data is not None

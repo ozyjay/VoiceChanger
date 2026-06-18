@@ -593,8 +593,10 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.zoom_in_button.text(), "Zoom In")
             self.assertEqual(window.zoom_out_button.text(), "Zoom Out")
             self.assertEqual(window.zoom_reset_button.text(), "Reset Zoom")
-            self.assertEqual(window.follow_button.text(), "Follow")
+            self.assertEqual(window.follow_button.text(), "Follow: On")
             self.assertTrue(window.follow_button.isChecked())
+            self.assertIn("border: 2px solid #38bdf8", window.follow_button.style_sheet)
+            self.assertIn("background: #0f2a3a", window.follow_button.style_sheet)
 
             window.zoom_in_button.clicked.emit()
             self.assertEqual(window.visualisation_widget.waveform_zoom, 2.0)
@@ -609,9 +611,13 @@ class ProjectSetupTests(unittest.TestCase):
             window.follow_button.clicked.emit()
             self.assertFalse(window.visualisation_widget.waveform_follow_enabled)
             self.assertFalse(window.follow_button.isChecked())
+            self.assertEqual(window.follow_button.text(), "Follow: Off")
+            self.assertIn("border: 2px solid #475569", window.follow_button.style_sheet)
+            self.assertIn("background: #111827", window.follow_button.style_sheet)
 
             window.visualisation_widget.set_waveform_follow_enabled(True)
             self.assertTrue(window.follow_button.isChecked())
+            self.assertEqual(window.follow_button.text(), "Follow: On")
         finally:
             sys.path.remove(str(SRC))
 
