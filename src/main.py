@@ -1,6 +1,6 @@
 import sys
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QVBoxLayout
 import sounddevice as sd
 import numpy as np
 
@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        self.setGeometry(100, 100, 1100, 760)
+        self.setGeometry(100, 100, 1280, 820)
         self.setWindowTitle('Voice Changer Live')
         self.setStyleSheet(
             """
@@ -90,10 +90,22 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
         centralWidget.setLayout(layout)
 
+        self.top_info_widget = QWidget()
+        self.top_info_widget.setObjectName("topInfoBand")
+        top_info_layout = QVBoxLayout()
+        top_info_layout.setContentsMargins(0, 0, 0, 0)
+        top_info_layout.setSpacing(6)
+        self.top_info_widget.setLayout(top_info_layout)
+        layout.addWidget(self.top_info_widget)
+
+        info_labels_layout = QHBoxLayout()
+        info_labels_layout.setSpacing(8)
+        top_info_layout.addLayout(info_labels_layout)
+
         self.title_label = QLabel("Voice Changer Live")
         self.title_label.setObjectName("titleLabel")
-        self.title_label.setStyleSheet("font-size: 28px; font-weight: 900; color: #f8fafc;")
-        layout.addWidget(self.title_label)
+        self.title_label.setStyleSheet("font-size: 24px; font-weight: 900; color: #f8fafc;")
+        info_labels_layout.addWidget(self.title_label, 0)
 
         self.status_label = QLabel("Step 1: Record your voice")
         self.status_label.setObjectName("statusLabel")
@@ -101,7 +113,7 @@ class MainWindow(QMainWindow):
             "background: #0f172a; border: 2px solid #334155; border-radius: 8px; "
             "padding: 5px 10px; font-size: 15px; font-weight: 700; color: #cbd5e1;"
         )
-        layout.addWidget(self.status_label)
+        info_labels_layout.addWidget(self.status_label, 1)
 
         self.active_chain_label = QLabel(self._effect_chain_display())
         self.active_chain_label.setObjectName("activeChainLabel")
@@ -109,7 +121,7 @@ class MainWindow(QMainWindow):
             "background: #020617; border: 2px solid #38bdf8; border-radius: 8px; "
             "padding: 6px 10px; font-size: 16px; font-weight: 900; color: #e0f2fe;"
         )
-        layout.addWidget(self.active_chain_label)
+        info_labels_layout.addWidget(self.active_chain_label, 1)
 
         self.explanation_label = QLabel(self._effect_explanation())
         self.explanation_label.setObjectName("explanationLabel")
@@ -117,7 +129,7 @@ class MainWindow(QMainWindow):
             "background: #172033; border: 2px solid #475569; border-radius: 8px; "
             "padding: 6px 10px; font-size: 14px; font-weight: 700; color: #f8fafc;"
         )
-        layout.addWidget(self.explanation_label)
+        info_labels_layout.addWidget(self.explanation_label, 2)
 
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(10)
@@ -142,19 +154,36 @@ class MainWindow(QMainWindow):
         controls_layout.addWidget(self.play_original_button)
         controls_layout.addWidget(self.play_filtered_button)
         controls_layout.addWidget(self.reset_button)
-        layout.addLayout(controls_layout)
+        top_info_layout.addLayout(controls_layout)
 
-        effects_layout = QGridLayout()
+        body_layout = QHBoxLayout()
+        body_layout.setSpacing(12)
+        layout.addLayout(body_layout, 1)
+
+        self.pedal_rail_widget = QWidget()
+        self.pedal_rail_widget.setObjectName("pedalRail")
+        self.pedal_rail_widget.setFixedWidth(250)
+        effects_layout = QVBoxLayout()
+        effects_layout.setContentsMargins(0, 0, 0, 0)
         effects_layout.setSpacing(10)
+        self.pedal_rail_widget.setLayout(effects_layout)
         self.effect_buttons = {}
-        for index, effect_name in enumerate(EFFECT_CARD_NAMES):
+        for effect_name in EFFECT_CARD_NAMES:
             button = QPushButton()
             button.setObjectName(f"effectButton{effect_name}")
             button.setCheckable(True)
             button.clicked.connect(lambda _checked=False, name=effect_name: self.effect_selected(name))
             self.effect_buttons[effect_name] = button
-            effects_layout.addWidget(button, index // 3, index % 3)
-        layout.addLayout(effects_layout)
+            effects_layout.addWidget(button)
+        body_layout.addWidget(self.pedal_rail_widget, 0)
+
+        self.visual_pane_widget = QWidget()
+        self.visual_pane_widget.setObjectName("visualPane")
+        visual_pane_layout = QVBoxLayout()
+        visual_pane_layout.setContentsMargins(0, 0, 0, 0)
+        visual_pane_layout.setSpacing(8)
+        self.visual_pane_widget.setLayout(visual_pane_layout)
+        body_layout.addWidget(self.visual_pane_widget, 1)
 
         self.visualisation_widget = AudioVisualisationWidget()
         self.visualisation_widget.on_waveform_follow_changed = self._set_waveform_follow_button_checked
@@ -183,8 +212,8 @@ class MainWindow(QMainWindow):
             zoom_layout.addWidget(button)
         self._set_waveform_follow_button_checked(True)
         zoom_layout.addWidget(self.follow_button)
-        layout.addLayout(zoom_layout)
-        layout.addWidget(self.visualisation_widget, 1)
+        visual_pane_layout.addLayout(zoom_layout)
+        visual_pane_layout.addWidget(self.visualisation_widget, 1)
         self._refresh_effect_cards()
         self._update_control_state()
 

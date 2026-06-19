@@ -32,6 +32,7 @@ class FakeWidget:
         self.update_count = 0
         self.enabled = True
         self.style_sheet = ""
+        self.fixed_width = None
 
     def setObjectName(self, name):
         self._object_name = name
@@ -41,6 +42,9 @@ class FakeWidget:
 
     def setMinimumHeight(self, height):
         self.minimum_height = height
+
+    def setFixedWidth(self, width):
+        self.fixed_width = width
 
     def setStyleSheet(self, style_sheet):
         self.style_sheet = style_sheet
@@ -110,7 +114,8 @@ class FakeLayout:
         widget.layout_args = args
         self.widgets.append(widget)
 
-    def addLayout(self, layout):
+    def addLayout(self, layout, *args):
+        layout.layout_args = args
         self.layouts.append(layout)
 
     def setSpacing(self, spacing):
@@ -554,11 +559,39 @@ class ProjectSetupTests(unittest.TestCase):
 
             window = MainWindow()
 
-            self.assertEqual(window.geometry, (100, 100, 1100, 760))
-            self.assertGreaterEqual(window.visualisation_widget.minimum_height, 340)
-            self.assertLessEqual(window.visualisation_widget.minimum_height, 380)
+            self.assertEqual(window.geometry, (100, 100, 1280, 820))
+            self.assertGreaterEqual(window.visualisation_widget.minimum_height, 500)
+            self.assertLessEqual(window.visualisation_widget.minimum_height, 560)
             for button in window.effect_buttons.values():
                 self.assertIn("min-height: 72px", button.style_sheet)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_stage_layout_uses_left_pedal_rail_and_expanding_visual_pane(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            sys.modules.pop("audio_visualisation_widget", None)
+            from main import EFFECT_CARD_NAMES, MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.top_info_widget.objectName(), "topInfoBand")
+            self.assertEqual(window.pedal_rail_widget.objectName(), "pedalRail")
+            self.assertEqual(window.pedal_rail_widget.fixed_width, 250)
+            self.assertEqual(window.visual_pane_widget.objectName(), "visualPane")
+            self.assertEqual(window.pedal_rail_widget.layout_args, (0,))
+            self.assertEqual(window.visual_pane_widget.layout_args, (1,))
+
+            rail_buttons = window.pedal_rail_widget.layout.widgets
+            self.assertEqual([button.objectName() for button in rail_buttons], [f"effectButton{name}" for name in EFFECT_CARD_NAMES])
+            for button in rail_buttons:
+                self.assertFalse(hasattr(button, "grid_position"))
+
+            self.assertEqual(len(window.visual_pane_widget.layout.layouts), 1)
+            self.assertIn(window.visualisation_widget, window.visual_pane_widget.layout.widgets)
+            self.assertEqual(window.visualisation_widget.layout_args, (1,))
         finally:
             sys.path.remove(str(SRC))
 
