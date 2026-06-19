@@ -497,6 +497,8 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.selected_effect_name, "Echo")
             self.assertTrue(window.effect_buttons["Echo"].isChecked())
             self.assertIn("● ON", window.effect_buttons["Echo"].text())
+            self.assertIn("1: Normal → Echo", window.effect_buttons["Echo"].text())
+            self.assertNotIn("→", window.effect_buttons["Robot"].text())
             self.assertIn("background: #ef4444", window.effect_buttons["Echo"].style_sheet)
             self.assertEqual(window.play_filtered_button.text(), "Play Echo")
 
@@ -506,6 +508,8 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.selected_effect_names, ["Echo", "Robot"])
             self.assertEqual(window.selected_effect_name, "Echo + Robot")
             self.assertIn("● ON", window.effect_buttons["Robot"].text())
+            self.assertIn("1: Normal → Echo", window.effect_buttons["Echo"].text())
+            self.assertIn("2: Echo → Robot", window.effect_buttons["Robot"].text())
             self.assertEqual(window.play_filtered_button.text(), "Play Chain")
         finally:
             sys.path.remove(str(SRC))

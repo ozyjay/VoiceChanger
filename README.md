@@ -45,7 +45,7 @@ The project has a standard `pyproject.toml`, a `poetry.lock` file, and a `.pytho
 
 Use the pinned Python version:
 
-```bash
+```powershell
 pyenv install 3.12.13
 pyenv local 3.12.13
 python --version
@@ -55,27 +55,27 @@ python --version
 
 Install dependencies:
 
-```bash
-./scripts/setup.sh
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/setup.ps1
 ```
 
 Run tests and compile checks:
 
-```bash
-./scripts/test.sh
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1
 ```
 
 Run the GUI:
 
-```bash
-./scripts/run.sh
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1
 ```
 
 ## Demo Operator Flow
 
-1. Run setup with `./scripts/setup.sh`.
-2. Run tests with `./scripts/test.sh`.
-3. Run the app with `./scripts/run.sh`.
+1. Run setup with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/setup.ps1`.
+2. Run tests with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1`.
+3. Run the app with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1`.
 4. Ask the visitor to press `Record` and say a short phrase. Recording auto-stops after about 5 seconds.
 5. Toggle one or more bright effect pedals.
 6. Use `Play Original` and the processed playback button to compare the voices.

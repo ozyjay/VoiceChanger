@@ -27,14 +27,14 @@ The current code is only a GUI scaffold, so prefer incremental implementation ov
 
 After Python edits, run:
 
-```bash
-./scripts/test.sh
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1
 ```
 
 If GUI behaviour changes, also run the app manually when practical:
 
-```bash
-./scripts/run.sh
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1
 ```
 
 ## Known Project Notes
@@ -44,4 +44,4 @@ If GUI behaviour changes, also run the app manually when practical:
 - Python is pinned by `.python-version` for pyenv.
 - Dependencies are managed by Poetry using `pyproject.toml` and `poetry.lock`.
 - Poetry stores the project virtual environment outside the repo by default.
-- Use `./scripts/setup.sh` to prepare the local environment.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/setup.ps1` to prepare the local environment.

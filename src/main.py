@@ -428,11 +428,12 @@ class MainWindow(QMainWindow):
             selected = effect_name in self.selected_effect_names
             button.setChecked(selected)
             color = EFFECT_COLORS[effect_name]
-            indicator = "● ON" if selected else "○ OFF"
+            indicator = "LED ● ON" if selected else "LED ○ OFF"
             button.setText(
                 f"{effect_name.upper()}\n"
                 f"{EFFECT_SUBTITLES[effect_name]}\n"
                 f"{indicator}"
+                f"{self._effect_pedal_flow_label(effect_name)}"
             )
             border_width = 4 if selected else 2
             background = color if selected else "#243044"
@@ -447,6 +448,14 @@ class MainWindow(QMainWindow):
         self.play_filtered_button.setText(self._effect_play_label())
         self.active_chain_label.setText(self._effect_chain_display())
         self.explanation_label.setText(self._effect_explanation())
+
+    def _effect_pedal_flow_label(self, effect_name):
+        if effect_name not in self.selected_effect_names:
+            return ""
+
+        chain_index = self.selected_effect_names.index(effect_name)
+        input_name = "Normal" if chain_index == 0 else self.selected_effect_names[chain_index - 1]
+        return f"\n{chain_index + 1}: {input_name} → {effect_name}"
 
     def _normalise_effect_names(self, effect_names):
         if isinstance(effect_names, str):

@@ -4,6 +4,24 @@ Set-Location (Join-Path $PSScriptRoot "..")
 
 $env:PYTHONDONTWRITEBYTECODE = "1"
 
-poetry run python -m unittest discover -s tests -v
-poetry run python -c "from pathlib import Path; [compile(path.read_text(), str(path), 'exec') for path in sorted(Path('src').glob('*.py'))]"
-poetry check
+function Invoke-CheckedNative {
+    param(
+        [scriptblock] $Command
+    )
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+$compileSource = @'
+from pathlib import Path
+
+for path in sorted(Path("src").glob("*.py")):
+    compile(path.read_text(encoding="utf-8"), str(path), "exec")
+'@
+
+Invoke-CheckedNative { poetry run python -m unittest discover -s tests -v }
+Invoke-CheckedNative { poetry run python -c $compileSource }
+Invoke-CheckedNative { poetry check }
