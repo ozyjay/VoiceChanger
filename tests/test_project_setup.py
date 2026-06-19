@@ -472,10 +472,13 @@ class ProjectSetupTests(unittest.TestCase):
             window = MainWindow()
 
             self.assertFalse(hasattr(window, "effect_combo_box"))
+            self.assertEqual(window.active_effect_deck, "Classic")
             self.assertEqual(
                 set(window.effect_buttons),
                 {"Chipmunk", "Giant", "Robot", "Radio", "Alien", "Echo"},
             )
+            self.assertTrue(window.effect_deck_buttons["Classic"].isChecked())
+            self.assertFalse(window.effect_deck_buttons["Wild"].isChecked())
             self.assertEqual(window.selected_effect_names, [])
             self.assertEqual(window.selected_effect_name, "Normal")
             self.assertFalse(window.effect_buttons["Chipmunk"].isChecked())
@@ -573,7 +576,7 @@ class ProjectSetupTests(unittest.TestCase):
         try:
             sys.modules.pop("main", None)
             sys.modules.pop("audio_visualisation_widget", None)
-            from main import EFFECT_CARD_NAMES, MainWindow
+            from main import EFFECT_DECKS, MainWindow
 
             window = MainWindow()
 
@@ -584,14 +587,64 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.pedal_rail_widget.layout_args, (0,))
             self.assertEqual(window.visual_pane_widget.layout_args, (1,))
 
-            rail_buttons = window.pedal_rail_widget.layout.widgets
-            self.assertEqual([button.objectName() for button in rail_buttons], [f"effectButton{name}" for name in EFFECT_CARD_NAMES])
+            self.assertEqual(len(window.pedal_rail_widget.layout.layouts), 2)
+            deck_layout, effects_layout = window.pedal_rail_widget.layout.layouts
+            self.assertEqual([button.text() for button in deck_layout.widgets], ["Classic", "Wild"])
+            rail_buttons = effects_layout.widgets
+            self.assertEqual([button.objectName() for button in rail_buttons], [f"effectButton{name}" for name in EFFECT_DECKS["Classic"]])
             for button in rail_buttons:
                 self.assertFalse(hasattr(button, "grid_position"))
 
             self.assertEqual(len(window.visual_pane_widget.layout.layouts), 1)
             self.assertIn(window.visualisation_widget, window.visual_pane_widget.layout.widgets)
             self.assertEqual(window.visualisation_widget.layout_args, (1,))
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_effect_deck_switching_shows_wild_pedals_and_keeps_cross_deck_chain(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            samplerate = 8000
+            t = np.arange(samplerate, dtype=np.float32) / samplerate
+            window.samplerate = samplerate
+            window.audio_data = (0.6 * np.sin(2 * np.pi * 330 * t)).reshape(-1, 1)
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Echo")
+                window.effect_deck_buttons["Wild"].clicked.emit()
+
+            self.assertEqual(window.active_effect_deck, "Wild")
+            self.assertEqual(set(window.effect_buttons), {"Megaphone", "Underwater", "Vibrato", "Choir", "Monster", "Cave"})
+            self.assertTrue(window.effect_deck_buttons["Wild"].isChecked())
+            self.assertFalse(window.effect_deck_buttons["Classic"].isChecked())
+            self.assertEqual(window.selected_effect_names, ["Echo"])
+            self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Echo")
+            self.assertIn("MEGAPHONE", window.effect_buttons["Megaphone"].text())
+            self.assertIn("LED ○ OFF", window.effect_buttons["Megaphone"].text())
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Megaphone")
+
+            self.assertEqual(window.selected_effect_names, ["Echo", "Megaphone"])
+            self.assertEqual(window.selected_effect_name, "Echo + Megaphone")
+            self.assertIn("2: Echo → Megaphone", window.effect_buttons["Megaphone"].text())
+            self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Echo → Megaphone")
+            self.assertEqual(window.play_filtered_button.text(), "Play Chain")
+            self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Echo + Megaphone")
+
+            with redirect_stdout(StringIO()):
+                window.effect_deck_buttons["Classic"].clicked.emit()
+
+            self.assertEqual(set(window.effect_buttons), {"Chipmunk", "Giant", "Robot", "Radio", "Alien", "Echo"})
+            self.assertTrue(window.effect_buttons["Echo"].isChecked())
+            self.assertIn("1: Normal → Echo", window.effect_buttons["Echo"].text())
+            self.assertEqual(window.selected_effect_names, ["Echo", "Megaphone"])
+            self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Echo → Megaphone")
         finally:
             sys.path.remove(str(SRC))
 
@@ -915,6 +968,8 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertIsNone(window.audio_data_processed)
             self.assertIsNone(window.visualisation_widget.visualisation_data)
             self.assertEqual(window.selected_effect_names, [])
+            self.assertEqual(window.active_effect_deck, "Classic")
+            self.assertTrue(window.effect_deck_buttons["Classic"].isChecked())
             self.assertEqual(window.active_chain_label.text, "ACTIVE CHAIN: Normal voice")
             self.assertEqual(window.play_filtered_button.text(), "Play Normal")
             self.assertIn("Step 1", window.status_label.text)

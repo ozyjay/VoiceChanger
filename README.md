@@ -9,7 +9,9 @@ The app is now a working `Voice Changer Live` demo with a playful pedalboard-sty
 - Record a short voice clip from the microphone.
 - Automatically stop recording after about 5 seconds for reliable public demos.
 - Play the original clip.
-- Toggle one or more effect pedals: Chipmunk, Giant, Robot, Radio, Alien, and Echo.
+- Toggle one or more effect pedals from the Classic and Wild decks.
+- Use Classic effects: Chipmunk, Giant, Robot, Radio, Alien, and Echo.
+- Use Wild effects: Megaphone, Underwater, Vibrato, Choir, Monster, and Cave.
 - Play the processed result with a dynamic button label such as `Play Normal`, `Play Echo`, or `Play Chain`.
 - See the current `ACTIVE CHAIN` near the top of the window.
 - Read a short plain-English `What changed?` explanation for the selected effect chain.
@@ -77,7 +79,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1
 2. Run tests with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1`.
 3. Run the app with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1`.
 4. Ask the visitor to press `Record` and say a short phrase. Recording auto-stops after about 5 seconds.
-5. Toggle one or more bright effect pedals.
+5. Toggle one or more bright effect pedals. Use `Classic` or `Wild` to switch decks.
 6. Use `Play Original` and the processed playback button to compare the voices.
 7. Point out the `ACTIVE CHAIN`, `What changed?` panel, waveform, and FFT comparison.
 8. Press `Reset / Next Visitor` before the next visitor.

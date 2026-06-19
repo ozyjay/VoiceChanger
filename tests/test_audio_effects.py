@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from audio_effects import apply_effect, fft_data, prepare_playback_audio, waveform_data
+from audio_effects import EFFECT_NAMES, apply_effect, fft_data, prepare_playback_audio, waveform_data
 
 
 def sine_wave(frequency, samplerate=8000, seconds=1.0, amplitude=0.7):
@@ -132,6 +132,85 @@ class AudioEffectsTests(unittest.TestCase):
         self.assertEqual(processed.shape, audio.shape)
         self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.05)
         self.assertNotAlmostEqual(dominant_frequency(processed, 8000), 300, delta=10)
+        self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
+
+    def test_wild_effects_are_registered_and_safe(self):
+        audio = sine_wave(330, amplitude=0.45)
+
+        for effect_name in ("Megaphone", "Underwater", "Vibrato", "Choir", "Monster", "Cave"):
+            with self.subTest(effect_name=effect_name):
+                self.assertIn(effect_name, EFFECT_NAMES)
+                processed = apply_effect(audio, effect_name, samplerate=8000)
+                self.assertEqual(processed.shape, audio.shape)
+                self.assertEqual(processed.dtype, np.float32)
+                self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
+                self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.005)
+
+    def test_megaphone_emphasises_speech_band_and_adds_drive(self):
+        samplerate = 8000
+        audio = sine_wave(120, samplerate=samplerate, amplitude=0.25)
+        audio += sine_wave(1000, samplerate=samplerate, amplitude=0.25)
+        audio += sine_wave(3600, samplerate=samplerate, amplitude=0.25)
+
+        processed = apply_effect(audio, "Megaphone", samplerate=samplerate)
+
+        speech = magnitude_at(processed, samplerate, 1000)
+        low = magnitude_at(processed, samplerate, 120)
+        high = magnitude_at(processed, samplerate, 3600)
+        self.assertGreater(speech, low * 4)
+        self.assertGreater(speech, high * 4)
+        self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
+
+    def test_underwater_muffles_high_frequencies(self):
+        samplerate = 8000
+        audio = sine_wave(300, samplerate=samplerate, amplitude=0.35)
+        audio += sine_wave(2400, samplerate=samplerate, amplitude=0.35)
+
+        processed = apply_effect(audio, "Underwater", samplerate=samplerate)
+
+        low = magnitude_at(processed, samplerate, 300)
+        high = magnitude_at(processed, samplerate, 2400)
+        self.assertGreater(low, high * 5)
+        self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
+
+    def test_vibrato_adds_pitch_wobble_sidebands(self):
+        samplerate = 8000
+        audio = sine_wave(440, samplerate=samplerate, amplitude=0.45)
+
+        processed = apply_effect(audio, "Vibrato", samplerate=samplerate)
+
+        self.assertGreater(magnitude_at(processed, samplerate, 445), magnitude_at(audio, samplerate, 445) * 2)
+        self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.02)
+
+    def test_choir_layers_delayed_copies(self):
+        samplerate = 8000
+        audio = np.zeros((samplerate // 2, 1), dtype=np.float32)
+        audio[0, 0] = 0.8
+
+        processed = apply_effect(audio, "Choir", samplerate=samplerate)
+
+        self.assertGreater(float(processed[int(samplerate * 0.018), 0]), 0.05)
+        self.assertGreater(float(processed[int(samplerate * 0.034), 0]), 0.05)
+        self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
+
+    def test_monster_lowers_pitch_and_adds_growl(self):
+        audio = sine_wave(300, amplitude=0.45)
+
+        processed = apply_effect(audio, "Monster", samplerate=8000)
+
+        self.assertLess(dominant_frequency(processed, 8000), 210)
+        self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.05)
+
+    def test_cave_adds_long_echoes(self):
+        samplerate = 8000
+        audio = np.zeros((samplerate, 1), dtype=np.float32)
+        audio[0, 0] = 0.8
+
+        processed = apply_effect(audio, "Cave", samplerate=samplerate)
+
+        self.assertAlmostEqual(float(processed[0, 0]), 0.8, places=5)
+        self.assertGreater(float(processed[int(samplerate * 0.12), 0]), 0.2)
+        self.assertGreater(float(processed[int(samplerate * 0.24), 0]), 0.1)
         self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
 
     def test_waveform_data_downsamples_to_requested_point_count(self):

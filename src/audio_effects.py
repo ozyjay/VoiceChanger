@@ -1,7 +1,21 @@
 import numpy as np
 
 
-EFFECT_NAMES = ("Normal", "Chipmunk", "Giant", "Robot", "Radio", "Alien", "Echo")
+EFFECT_NAMES = (
+    "Normal",
+    "Chipmunk",
+    "Giant",
+    "Robot",
+    "Radio",
+    "Alien",
+    "Echo",
+    "Megaphone",
+    "Underwater",
+    "Vibrato",
+    "Choir",
+    "Monster",
+    "Cave",
+)
 
 
 def apply_effect(audio_data, effect_name, samplerate):
@@ -21,6 +35,18 @@ def apply_effect(audio_data, effect_name, samplerate):
         processed = _alien(audio, samplerate)
     elif effect_name == "Echo":
         processed = _echo(audio, samplerate)
+    elif effect_name == "Megaphone":
+        processed = _megaphone(audio, samplerate)
+    elif effect_name == "Underwater":
+        processed = _underwater(audio, samplerate)
+    elif effect_name == "Vibrato":
+        processed = _vibrato(audio, samplerate)
+    elif effect_name == "Choir":
+        processed = _choir(audio, samplerate)
+    elif effect_name == "Monster":
+        processed = _monster(audio, samplerate)
+    elif effect_name == "Cave":
+        processed = _cave(audio, samplerate)
     else:
         processed = audio.copy()
 
@@ -122,18 +148,26 @@ def _robot(audio, samplerate):
 
 
 def _radio(audio, samplerate):
+    filtered = _fft_band_mix(audio, samplerate, low_hz=300, high_hz=3200, inside_gain=1.25, outside_gain=0.08)
+    return np.tanh(filtered * 1.8).astype(np.float32)
+
+
+def _fft_band_mix(audio, samplerate, low_hz=None, high_hz=None, inside_gain=1.0, outside_gain=0.0):
     filtered_channels = []
     freqs = np.fft.rfftfreq(len(audio), d=1 / samplerate)
-    band = (freqs >= 300) & (freqs <= 3200)
+    band = np.ones_like(freqs, dtype=bool)
+    if low_hz is not None:
+        band &= freqs >= float(low_hz)
+    if high_hz is not None:
+        band &= freqs <= float(high_hz)
 
     for channel in range(audio.shape[1]):
         spectrum = np.fft.rfft(audio[:, channel])
-        spectrum[~band] *= 0.08
-        spectrum[band] *= 1.25
+        spectrum[~band] *= outside_gain
+        spectrum[band] *= inside_gain
         filtered_channels.append(np.fft.irfft(spectrum, n=len(audio)).astype(np.float32))
 
-    filtered = np.stack(filtered_channels, axis=1)
-    return np.tanh(filtered * 1.8).astype(np.float32)
+    return np.stack(filtered_channels, axis=1)
 
 
 def _alien(audio, samplerate):
@@ -149,6 +183,68 @@ def _echo(audio, samplerate, delay_seconds=0.16, feedback=0.42):
 
     if delay_samples < len(audio):
         output[delay_samples:] += audio[:-delay_samples] * feedback
+
+    return output
+
+
+def _megaphone(audio, samplerate):
+    filtered = _fft_band_mix(audio, samplerate, low_hz=450, high_hz=2800, inside_gain=1.5, outside_gain=0.05)
+    return np.tanh(filtered * 2.6).astype(np.float32)
+
+
+def _underwater(audio, samplerate):
+    filtered = _fft_band_mix(audio, samplerate, high_hz=900, inside_gain=1.1, outside_gain=0.04)
+    t = np.arange(len(audio), dtype=np.float32).reshape(-1, 1) / float(samplerate)
+    wobble = 0.68 + (0.24 * np.sin(2 * np.pi * 3.0 * t))
+    return _echo(filtered * wobble, samplerate, delay_seconds=0.055, feedback=0.18)
+
+
+def _vibrato(audio, samplerate):
+    return _modulated_delay(audio, samplerate, rate_hz=5.2, depth_ms=7.5, base_ms=9.0)
+
+
+def _choir(audio, samplerate):
+    high = _frequency_shift(audio, 1.015, samplerate)
+    low = _frequency_shift(audio, 0.985, samplerate)
+    layer_one = _delay(high, samplerate, delay_seconds=0.018)
+    layer_two = _delay(low, samplerate, delay_seconds=0.034)
+    return (audio * 0.64) + (layer_one * 0.25) + (layer_two * 0.25)
+
+
+def _monster(audio, samplerate):
+    pitched = _frequency_shift(audio, 0.58, samplerate)
+    t = np.arange(len(audio), dtype=np.float32).reshape(-1, 1) / float(samplerate)
+    growl = 0.78 + (0.28 * np.sin(2 * np.pi * 42.0 * t))
+    return np.tanh(pitched * growl * 1.45).astype(np.float32)
+
+
+def _cave(audio, samplerate):
+    output = audio.copy()
+    for delay_seconds, feedback in ((0.12, 0.34), (0.24, 0.24), (0.36, 0.16)):
+        output += _delay(audio, samplerate, delay_seconds) * feedback
+    return output
+
+
+def _delay(audio, samplerate, delay_seconds):
+    delay_samples = max(1, int(samplerate * delay_seconds))
+    output = np.zeros_like(audio)
+    if delay_samples < len(audio):
+        output[delay_samples:] = audio[:-delay_samples]
+    return output
+
+
+def _modulated_delay(audio, samplerate, rate_hz, depth_ms, base_ms):
+    output = np.zeros_like(audio)
+    if len(audio) == 0:
+        return output
+
+    sample_positions = np.arange(len(audio), dtype=np.float32)
+    t = sample_positions / float(samplerate)
+    delay_samples = (base_ms + (depth_ms * np.sin(2 * np.pi * rate_hz * t))) * float(samplerate) / 1000.0
+    source_positions = np.clip(sample_positions - delay_samples, 0, len(audio) - 1)
+
+    for channel in range(audio.shape[1]):
+        output[:, channel] = np.interp(source_positions, sample_positions, audio[:, channel]).astype(np.float32)
 
     return output
 

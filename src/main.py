@@ -9,6 +9,10 @@ from audio_visualisation_widget import AudioVisualisationWidget
 
 
 EFFECT_CARD_NAMES = tuple(effect_name for effect_name in EFFECT_NAMES if effect_name != "Normal")
+EFFECT_DECKS = {
+    "Classic": ("Chipmunk", "Giant", "Robot", "Radio", "Alien", "Echo"),
+    "Wild": ("Megaphone", "Underwater", "Vibrato", "Choir", "Monster", "Cave"),
+}
 EFFECT_COLORS = {
     "Chipmunk": "#f59e0b",
     "Giant": "#7c3aed",
@@ -16,6 +20,12 @@ EFFECT_COLORS = {
     "Radio": "#22c55e",
     "Alien": "#ec4899",
     "Echo": "#ef4444",
+    "Megaphone": "#f97316",
+    "Underwater": "#0ea5e9",
+    "Vibrato": "#84cc16",
+    "Choir": "#a78bfa",
+    "Monster": "#16a34a",
+    "Cave": "#94a3b8",
 }
 EFFECT_SUBTITLES = {
     "Chipmunk": "tiny and squeaky",
@@ -24,6 +34,12 @@ EFFECT_SUBTITLES = {
     "Radio": "old speaker",
     "Alien": "space wobble",
     "Echo": "bouncy repeat",
+    "Megaphone": "loud speaker",
+    "Underwater": "muffled wobble",
+    "Vibrato": "pitch wiggle",
+    "Choir": "many voices",
+    "Monster": "deep growl",
+    "Cave": "big echoes",
 }
 EFFECT_EXPLANATIONS = {
     "Chipmunk": "Chipmunk raises the pitch so the voice sounds smaller and squeakier.",
@@ -32,6 +48,12 @@ EFFECT_EXPLANATIONS = {
     "Radio": "Radio filters the voice band so it sounds like an old speaker.",
     "Alien": "Alien combines pitch, wobble, and echo for a strange space voice.",
     "Echo": "Echo adds a delayed copy of the voice so words bounce back.",
+    "Megaphone": "Megaphone squeezes the voice into a loud speaker band with light distortion.",
+    "Underwater": "Underwater muffles the voice and adds a slow wobble.",
+    "Vibrato": "Vibrato wiggles the pitch smoothly up and down.",
+    "Choir": "Choir layers slightly shifted copies so one voice sounds like several.",
+    "Monster": "Monster drops the pitch and adds a low growl.",
+    "Cave": "Cave adds long echoes so the voice sounds far away in a big space.",
 }
 
 class MainWindow(QMainWindow):
@@ -41,6 +63,7 @@ class MainWindow(QMainWindow):
         self.audio_data_processed = None
         self.is_recording = False
         self.samplerate = 44100
+        self.active_effect_deck = "Classic"
         self.selected_effect_names = []
         self.selected_effect_name = self._effect_chain_name()
         self.playback_timer = QTimer(self)
@@ -163,17 +186,31 @@ class MainWindow(QMainWindow):
         self.pedal_rail_widget = QWidget()
         self.pedal_rail_widget.setObjectName("pedalRail")
         self.pedal_rail_widget.setFixedWidth(250)
+        pedal_rail_layout = QVBoxLayout()
+        pedal_rail_layout.setContentsMargins(0, 0, 0, 0)
+        pedal_rail_layout.setSpacing(10)
+        self.pedal_rail_widget.setLayout(pedal_rail_layout)
+        deck_layout = QHBoxLayout()
+        deck_layout.setSpacing(6)
+        self.effect_deck_buttons = {}
+        for deck_name in EFFECT_DECKS:
+            deck_button = QPushButton(deck_name)
+            deck_button.setObjectName(f"effectDeckButton{deck_name}")
+            deck_button.setCheckable(True)
+            deck_button.clicked.connect(lambda _checked=False, name=deck_name: self._set_active_effect_deck(name))
+            self.effect_deck_buttons[deck_name] = deck_button
+            deck_layout.addWidget(deck_button)
+        pedal_rail_layout.addLayout(deck_layout)
         effects_layout = QVBoxLayout()
-        effects_layout.setContentsMargins(0, 0, 0, 0)
         effects_layout.setSpacing(10)
-        self.pedal_rail_widget.setLayout(effects_layout)
+        pedal_rail_layout.addLayout(effects_layout)
         self.effect_buttons = {}
-        for effect_name in EFFECT_CARD_NAMES:
+        self.effect_button_slots = []
+        for index in range(len(EFFECT_DECKS["Classic"])):
             button = QPushButton()
-            button.setObjectName(f"effectButton{effect_name}")
             button.setCheckable(True)
-            button.clicked.connect(lambda _checked=False, name=effect_name: self.effect_selected(name))
-            self.effect_buttons[effect_name] = button
+            button.clicked.connect(lambda _checked=False, slot_index=index: self._effect_slot_selected(slot_index))
+            self.effect_button_slots.append(button)
             effects_layout.addWidget(button)
         body_layout.addWidget(self.pedal_rail_widget, 0)
 
@@ -428,6 +465,8 @@ class MainWindow(QMainWindow):
         self.reset_button.setEnabled(True)
         for button in self.effect_buttons.values():
             button.setEnabled(not self.is_recording)
+        for button in self.effect_deck_buttons.values():
+            button.setEnabled(not self.is_recording)
 
     def _reset_for_next_visitor(self):
         sd.stop()
@@ -448,12 +487,16 @@ class MainWindow(QMainWindow):
         # Reset effects for public demos so each visitor starts from the same clear Normal voice state.
         self.selected_effect_names = []
         self.selected_effect_name = self._effect_chain_name()
+        self.active_effect_deck = "Classic"
         self._refresh_effect_cards()
         self._set_status("Step 1: Record your voice")
         self._update_control_state()
 
     def _refresh_effect_cards(self):
-        for effect_name, button in self.effect_buttons.items():
+        self.effect_buttons = {}
+        for effect_name, button in zip(self._visible_effect_names(), self.effect_button_slots):
+            self.effect_buttons[effect_name] = button
+            button.setObjectName(f"effectButton{effect_name}")
             selected = effect_name in self.selected_effect_names
             button.setChecked(selected)
             color = EFFECT_COLORS[effect_name]
@@ -474,9 +517,37 @@ class MainWindow(QMainWindow):
                 f"color: {text_color}; font-size: 13px; font-weight: 900; "
                 f"min-height: 72px; padding: 6px 8px;"
             )
+        for deck_name, button in self.effect_deck_buttons.items():
+            selected = deck_name == self.active_effect_deck
+            button.setChecked(selected)
+            if selected:
+                button.setStyleSheet(
+                    "background: #38bdf8; border: 2px solid #bae6fd; border-radius: 8px; "
+                    "color: #082f49; font-size: 13px; font-weight: 900; min-height: 32px; padding: 4px 8px;"
+                )
+            else:
+                button.setStyleSheet(
+                    "background: #111827; border: 2px solid #475569; border-radius: 8px; "
+                    "color: #cbd5e1; font-size: 13px; font-weight: 800; min-height: 32px; padding: 4px 8px;"
+                )
         self.play_filtered_button.setText(self._effect_play_label())
         self.active_chain_label.setText(self._effect_chain_display())
         self.explanation_label.setText(self._effect_explanation())
+
+    def _visible_effect_names(self):
+        return EFFECT_DECKS[self.active_effect_deck]
+
+    def _set_active_effect_deck(self, deck_name):
+        if deck_name not in EFFECT_DECKS:
+            return
+        self.active_effect_deck = deck_name
+        self._refresh_effect_cards()
+        self._update_control_state()
+
+    def _effect_slot_selected(self, slot_index):
+        visible_effect_names = self._visible_effect_names()
+        if 0 <= slot_index < len(visible_effect_names):
+            self.effect_selected(visible_effect_names[slot_index])
 
     def _effect_pedal_flow_label(self, effect_name):
         if effect_name not in self.selected_effect_names:
