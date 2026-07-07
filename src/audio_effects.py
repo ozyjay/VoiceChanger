@@ -24,7 +24,7 @@ def apply_effect(audio_data, effect_name, samplerate):
     if effect_name == "Normal":
         processed = audio.copy()
     elif effect_name == "Chipmunk":
-        processed = _frequency_shift(audio, 1.45, samplerate)
+        processed = _frequency_shift(audio, 1.45, samplerate, preserve_length=True)
     elif effect_name == "Giant":
         processed = _frequency_shift(audio, 0.68, samplerate)
     elif effect_name == "Robot":
@@ -115,12 +115,15 @@ def _mono(audio):
     return np.mean(audio, axis=1)
 
 
-def _frequency_shift(audio, factor, samplerate):
-    shifted_channels = [_resample_pitch_channel(audio[:, channel], factor, samplerate) for channel in range(audio.shape[1])]
+def _frequency_shift(audio, factor, samplerate, preserve_length=False):
+    shifted_channels = [
+        _resample_pitch_channel(audio[:, channel], factor, samplerate, preserve_length=preserve_length)
+        for channel in range(audio.shape[1])
+    ]
     return np.stack(shifted_channels, axis=1)
 
 
-def _resample_pitch_channel(samples, factor, samplerate):
+def _resample_pitch_channel(samples, factor, samplerate, preserve_length=False):
     original_length = len(samples)
     if original_length == 0:
         return samples.astype(np.float32)
@@ -130,13 +133,15 @@ def _resample_pitch_channel(samples, factor, samplerate):
     source_positions = np.clip(source_positions, 0, original_length - 1)
     resampled = np.interp(source_positions, np.arange(original_length), samples).astype(np.float32)
 
+    if not preserve_length:
+        return resampled
+
     if new_length >= original_length:
         return resampled[:original_length]
 
+    output = np.zeros(original_length, dtype=np.float32)
     fade_samples = min(max(2, int(float(samplerate) * 0.015)), new_length)
     resampled[-fade_samples:] *= np.linspace(1.0, 0.0, fade_samples, dtype=np.float32)
-
-    output = np.zeros(original_length, dtype=np.float32)
     output[:new_length] = resampled
     return output
 
@@ -171,19 +176,17 @@ def _fft_band_mix(audio, samplerate, low_hz=None, high_hz=None, inside_gain=1.0,
 
 
 def _alien(audio, samplerate):
-    pitched = _frequency_shift(audio, 1.22, samplerate)
-    t = np.arange(len(audio), dtype=np.float32).reshape(-1, 1) / float(samplerate)
+    pitched = _frequency_shift(audio, 1.22, samplerate, preserve_length=True)
+    t = np.arange(len(pitched), dtype=np.float32).reshape(-1, 1) / float(samplerate)
     shimmer = 0.75 + (0.35 * np.sin(2 * np.pi * 70.0 * t))
     return _echo(pitched * shimmer, samplerate, delay_seconds=0.09, feedback=0.28)
 
 
 def _echo(audio, samplerate, delay_seconds=0.16, feedback=0.42):
     delay_samples = max(1, int(samplerate * delay_seconds))
-    output = audio.copy()
-
-    if delay_samples < len(audio):
-        output[delay_samples:] += audio[:-delay_samples] * feedback
-
+    output = np.zeros((len(audio) + delay_samples, audio.shape[1]), dtype=np.float32)
+    output[:len(audio)] += audio
+    output[delay_samples:delay_samples + len(audio)] += audio * feedback
     return output
 
 
@@ -204,32 +207,37 @@ def _vibrato(audio, samplerate):
 
 
 def _choir(audio, samplerate):
-    high = _frequency_shift(audio, 1.015, samplerate)
-    low = _frequency_shift(audio, 0.985, samplerate)
-    layer_one = _delay(high, samplerate, delay_seconds=0.018)
-    layer_two = _delay(low, samplerate, delay_seconds=0.034)
+    high = _frequency_shift(audio, 1.015, samplerate, preserve_length=True)
+    low = _frequency_shift(audio, 0.985, samplerate, preserve_length=True)
+    layer_one = _delay(high, samplerate, delay_seconds=0.018, preserve_length=True)
+    layer_two = _delay(low, samplerate, delay_seconds=0.034, preserve_length=True)
     return (audio * 0.64) + (layer_one * 0.25) + (layer_two * 0.25)
 
 
 def _monster(audio, samplerate):
     pitched = _frequency_shift(audio, 0.58, samplerate)
-    t = np.arange(len(audio), dtype=np.float32).reshape(-1, 1) / float(samplerate)
+    t = np.arange(len(pitched), dtype=np.float32).reshape(-1, 1) / float(samplerate)
     growl = 0.78 + (0.28 * np.sin(2 * np.pi * 42.0 * t))
     return np.tanh(pitched * growl * 1.45).astype(np.float32)
 
 
 def _cave(audio, samplerate):
-    output = audio.copy()
+    longest_delay = int(samplerate * 0.36)
+    output = np.zeros((len(audio) + longest_delay, audio.shape[1]), dtype=np.float32)
+    output[:len(audio)] += audio
     for delay_seconds, feedback in ((0.12, 0.34), (0.24, 0.24), (0.36, 0.16)):
-        output += _delay(audio, samplerate, delay_seconds) * feedback
+        delayed = _delay(audio, samplerate, delay_seconds)
+        output[:len(delayed)] += delayed * feedback
     return output
 
 
-def _delay(audio, samplerate, delay_seconds):
+def _delay(audio, samplerate, delay_seconds, preserve_length=False):
     delay_samples = max(1, int(samplerate * delay_seconds))
-    output = np.zeros_like(audio)
-    if delay_samples < len(audio):
-        output[delay_samples:] = audio[:-delay_samples]
+    output_length = len(audio) if preserve_length else len(audio) + delay_samples
+    output = np.zeros((output_length, audio.shape[1]), dtype=np.float32)
+    copy_count = min(len(audio), max(0, output_length - delay_samples))
+    if copy_count > 0:
+        output[delay_samples:delay_samples + copy_count] = audio[:copy_count]
     return output
 
 

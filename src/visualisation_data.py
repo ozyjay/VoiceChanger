@@ -49,7 +49,7 @@ def build_visualisation_data(
     return VisualisationData(
         effect_name=effect_name,
         samplerate=int(samplerate),
-        duration_seconds=_duration_seconds(original_audio, samplerate),
+        duration_seconds=max(_duration_seconds(original_audio, samplerate), _duration_seconds(processed_audio, samplerate)),
         max_frequency=float(max_frequency),
         waveform_limit=waveform_limit,
         display_gain=_display_gain(waveform_limit),

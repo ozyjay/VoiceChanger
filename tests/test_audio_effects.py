@@ -32,6 +32,11 @@ def magnitude_at(samples, samplerate, frequency):
     return magnitudes[int(np.argmin(np.abs(freqs - frequency)))]
 
 
+def mean_abs_change(processed, original):
+    count = min(len(processed), len(original))
+    return float(np.mean(np.abs(processed[:count] - original[:count])))
+
+
 class AudioEffectsTests(unittest.TestCase):
     def test_chipmunk_raises_dominant_frequency_without_changing_clip_length(self):
         audio = sine_wave(220)
@@ -77,12 +82,12 @@ class AudioEffectsTests(unittest.TestCase):
 
         self.assertLess(largest_step, 0.25)
 
-    def test_giant_lowers_dominant_frequency_without_changing_clip_length(self):
+    def test_giant_lowers_dominant_frequency_without_cutting_off_later_words(self):
         audio = sine_wave(260)
 
         processed = apply_effect(audio, "Giant", samplerate=8000)
 
-        self.assertEqual(processed.shape, audio.shape)
+        self.assertGreater(len(processed), len(audio))
         self.assertLess(dominant_frequency(processed, 8000), 210)
         self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
 
@@ -119,7 +124,7 @@ class AudioEffectsTests(unittest.TestCase):
 
         processed = apply_effect(audio, "Echo", samplerate=samplerate)
 
-        self.assertEqual(processed.shape, audio.shape)
+        self.assertEqual(len(processed), len(audio) + int(samplerate * 0.16))
         self.assertAlmostEqual(float(processed[0, 0]), 1.0, places=5)
         self.assertGreater(float(processed[int(samplerate * 0.16), 0]), 0.2)
         self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
@@ -129,8 +134,8 @@ class AudioEffectsTests(unittest.TestCase):
 
         processed = apply_effect(audio, "Alien", samplerate=8000)
 
-        self.assertEqual(processed.shape, audio.shape)
-        self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.05)
+        self.assertGreater(len(processed), len(audio))
+        self.assertGreater(mean_abs_change(processed, audio), 0.05)
         self.assertNotAlmostEqual(dominant_frequency(processed, 8000), 300, delta=10)
         self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
 
@@ -141,10 +146,11 @@ class AudioEffectsTests(unittest.TestCase):
             with self.subTest(effect_name=effect_name):
                 self.assertIn(effect_name, EFFECT_NAMES)
                 processed = apply_effect(audio, effect_name, samplerate=8000)
-                self.assertEqual(processed.shape, audio.shape)
+                self.assertEqual(processed.shape[1], audio.shape[1])
+                self.assertGreaterEqual(len(processed), len(audio))
                 self.assertEqual(processed.dtype, np.float32)
                 self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
-                self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.005)
+                self.assertGreater(mean_abs_change(processed, audio), 0.005)
 
     def test_megaphone_emphasises_speech_band_and_adds_drive(self):
         samplerate = 8000
@@ -198,19 +204,23 @@ class AudioEffectsTests(unittest.TestCase):
 
         processed = apply_effect(audio, "Monster", samplerate=8000)
 
+        self.assertGreater(len(processed), len(audio))
         self.assertLess(dominant_frequency(processed, 8000), 210)
-        self.assertGreater(float(np.mean(np.abs(processed - audio))), 0.05)
+        self.assertGreater(mean_abs_change(processed, audio), 0.05)
 
     def test_cave_adds_long_echoes(self):
         samplerate = 8000
         audio = np.zeros((samplerate, 1), dtype=np.float32)
         audio[0, 0] = 0.8
+        audio[-1, 0] = 0.8
 
         processed = apply_effect(audio, "Cave", samplerate=samplerate)
 
+        self.assertEqual(len(processed), len(audio) + int(samplerate * 0.36))
         self.assertAlmostEqual(float(processed[0, 0]), 0.8, places=5)
         self.assertGreater(float(processed[int(samplerate * 0.12), 0]), 0.2)
         self.assertGreater(float(processed[int(samplerate * 0.24), 0]), 0.1)
+        self.assertGreater(float(processed[len(audio) - 1 + int(samplerate * 0.12), 0]), 0.2)
         self.assertLessEqual(float(np.max(np.abs(processed))), 1.0)
 
     def test_waveform_data_downsamples_to_requested_point_count(self):
