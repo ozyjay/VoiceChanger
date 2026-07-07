@@ -438,6 +438,29 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_audio_visualisation_widget_keeps_zoomed_position_when_audio_updates(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("audio_visualisation_widget", None)
+            from audio_visualisation_widget import AudioVisualisationWidget
+
+            widget = AudioVisualisationWidget()
+            samplerate = 8000
+            audio = np.ones((samplerate * 4, 1), dtype=np.float32) * 0.2
+            widget.set_audio(audio, audio, "Normal", samplerate)
+            widget.zoom_in_waveform()
+            widget.set_waveform_follow_enabled(False)
+            widget.pan_waveform_by_pixels(-200, viewport_width=400)
+
+            self.assertEqual(widget._waveform_time_window(), (1.0, 3.0))
+
+            widget.set_audio(audio, audio * 0.8, "Robot", samplerate)
+
+            self.assertEqual(widget._waveform_time_window(), (1.0, 3.0))
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_audio_visualisation_widget_dragging_turns_follow_off_and_notifies_window(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
@@ -769,6 +792,40 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertTrue(window.effect_buttons["Echo"].isChecked())
             self.assertEqual(window.visualisation_widget.visualisation_data.effect_name, "Robot + Echo")
             self.assertEqual(window.play_filtered_button.text(), "Play Chain")
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_effect_cards_are_locked_while_playback_is_active(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window.audio_data = np.ones((8000, 1), dtype=np.float32) * 0.2
+            window.process_audio("Robot")
+
+            with redirect_stdout(StringIO()):
+                window.play_filtered()
+
+            self.assertTrue(window.playback_timer.isActive())
+            self.assertFalse(window.effect_buttons["Robot"].isEnabled())
+            self.assertFalse(window.effect_deck_buttons["Wild"].isEnabled())
+
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Echo")
+                window._set_active_effect_deck("Wild")
+
+            self.assertEqual(window.selected_effect_names, [])
+            self.assertEqual(window.active_effect_deck, "Classic")
+
+            window.playback_elapsed_seconds = window.playback_duration_seconds
+            window._advance_playback()
+
+            self.assertFalse(window.playback_timer.isActive())
+            self.assertTrue(window.effect_buttons["Robot"].isEnabled())
+            self.assertTrue(window.effect_deck_buttons["Wild"].isEnabled())
         finally:
             sys.path.remove(str(SRC))
 

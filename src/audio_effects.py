@@ -207,8 +207,8 @@ def _vibrato(audio, samplerate):
 
 
 def _choir(audio, samplerate):
-    high = _frequency_shift(audio, 1.055, samplerate, preserve_length=True)
-    low = _frequency_shift(audio, 0.945, samplerate, preserve_length=True)
+    high = _frequency_shift(audio, 1.025, samplerate, preserve_length=True)
+    low = _frequency_shift(audio, 0.965, samplerate, preserve_length=True)
     layer_one = _delay(high, samplerate, delay_seconds=0.018, preserve_length=True)
     layer_two = _delay(low, samplerate, delay_seconds=0.034, preserve_length=True)
     shimmer = _modulated_delay(audio, samplerate, rate_hz=2.2, depth_ms=5.5, base_ms=14.0)

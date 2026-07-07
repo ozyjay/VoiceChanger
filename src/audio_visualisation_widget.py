@@ -43,7 +43,6 @@ class AudioVisualisationWidget(QWidget):
             max_frequency=5000,
         )
         self.playback_progress = None
-        self.waveform_pan_start_seconds = 0.0
         self._waveform_drag_last_x = None
         self.update()
 

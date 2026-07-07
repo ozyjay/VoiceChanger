@@ -391,6 +391,10 @@ class MainWindow(QMainWindow):
             self._set_status("Tap Record first")
 
     def effect_selected(self, effect_name):
+        if self._is_playing():
+            self._set_status("Wait for playback to finish before changing effects")
+            return
+
         if effect_name not in EFFECT_CARD_NAMES:
             return
 
@@ -420,6 +424,7 @@ class MainWindow(QMainWindow):
             self.playback_ready_status = ready_status
             self.visualisation_widget.set_playback_progress(0.0)
             self.playback_timer.start(33)
+            self._update_control_state()
         except Exception as e:
             print(f"Error playing audio: {e}")
             self._set_status("Audio playback failed")
@@ -433,6 +438,7 @@ class MainWindow(QMainWindow):
         if progress >= 1.0:
             self.playback_timer.stop()
             self._set_status(self.playback_ready_status)
+            self._update_control_state()
 
     def _set_status(self, text):
         self.status_label.setText(text)
@@ -459,14 +465,15 @@ class MainWindow(QMainWindow):
     def _update_control_state(self):
         has_audio = self.audio_data is not None
         can_play = has_audio and not self.is_recording
+        can_change_effects = not self.is_recording and not self._is_playing()
         self.play_original_button.setEnabled(can_play)
         self.play_filtered_button.setEnabled(can_play)
         self.record_button.setEnabled(True)
         self.reset_button.setEnabled(True)
         for button in self.effect_buttons.values():
-            button.setEnabled(not self.is_recording)
+            button.setEnabled(can_change_effects)
         for button in self.effect_deck_buttons.values():
-            button.setEnabled(not self.is_recording)
+            button.setEnabled(can_change_effects)
 
     def _reset_for_next_visitor(self):
         sd.stop()
@@ -538,6 +545,10 @@ class MainWindow(QMainWindow):
         return EFFECT_DECKS[self.active_effect_deck]
 
     def _set_active_effect_deck(self, deck_name):
+        if self._is_playing():
+            self._set_status("Wait for playback to finish before changing effects")
+            return
+
         if deck_name not in EFFECT_DECKS:
             return
         self.active_effect_deck = deck_name
@@ -589,6 +600,9 @@ class MainWindow(QMainWindow):
         if len(names) == 1:
             return f"Play {names[0]}"
         return "Play Chain"
+
+    def _is_playing(self):
+        return self.playback_timer.isActive()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
