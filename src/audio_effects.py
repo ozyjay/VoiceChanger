@@ -207,11 +207,14 @@ def _vibrato(audio, samplerate):
 
 
 def _choir(audio, samplerate):
-    high = _frequency_shift(audio, 1.015, samplerate, preserve_length=True)
-    low = _frequency_shift(audio, 0.985, samplerate, preserve_length=True)
+    high = _frequency_shift(audio, 1.055, samplerate, preserve_length=True)
+    low = _frequency_shift(audio, 0.945, samplerate, preserve_length=True)
     layer_one = _delay(high, samplerate, delay_seconds=0.018, preserve_length=True)
     layer_two = _delay(low, samplerate, delay_seconds=0.034, preserve_length=True)
-    return (audio * 0.64) + (layer_one * 0.25) + (layer_two * 0.25)
+    shimmer = _modulated_delay(audio, samplerate, rate_hz=2.2, depth_ms=5.5, base_ms=14.0)
+    t = np.arange(len(audio), dtype=np.float32).reshape(-1, 1) / float(samplerate)
+    slow_sway = 0.8 + (0.2 * np.sin(2 * np.pi * 1.4 * t))
+    return (audio * 0.42) + (layer_one * 0.36) + (layer_two * 0.36) + (shimmer * slow_sway * 0.28)
 
 
 def _monster(audio, samplerate):

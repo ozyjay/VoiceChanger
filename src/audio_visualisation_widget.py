@@ -12,6 +12,12 @@ VISUAL_EFFECT_COLORS = {
     "Radio": "#22c55e",
     "Alien": "#ec4899",
     "Echo": "#ef4444",
+    "Megaphone": "#f97316",
+    "Underwater": "#0ea5e9",
+    "Vibrato": "#84cc16",
+    "Choir": "#a78bfa",
+    "Monster": "#16a34a",
+    "Cave": "#94a3b8",
 }
 
 
@@ -221,7 +227,7 @@ class AudioVisualisationWidget(QWidget):
             time_label = f"{x_min:.2f}-{x_max:.2f}s  zoom x{self.waveform_zoom:.0f}"
         else:
             time_label = "full clip"
-        self._draw_axis_labels(painter, rect, f"{time_label}  original grey  effect colour  change orange  gain x{data.display_gain:.1f}", "sound wave")
+        self._draw_axis_labels(painter, rect, f"{time_label}  original blue-grey  effect colour  difference orange  gain x{data.display_gain:.1f}", "sound wave")
 
     def _draw_fft_comparison(self, painter, rect, data, processed, color):
         self._draw_panel_frame(
@@ -256,7 +262,7 @@ class AudioVisualisationWidget(QWidget):
             width=2,
         )
         self._draw_playhead(painter, plot_rect)
-        self._draw_axis_labels(painter, rect, "original grey  effect colour  voice band 0-5 kHz", "energy")
+        self._draw_axis_labels(painter, rect, "original blue-grey  effect colour  voice band 0-5 kHz", "energy")
 
     def _draw_waveform(self, painter, rect, title, series, color, data, ghost_series=None, difference_amplitudes=None):
         self._draw_panel_frame(
