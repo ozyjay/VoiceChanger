@@ -180,53 +180,67 @@ class AudioVisualisationWidget(QWidget):
             painter,
             rect,
             self.comparison_panel_titles[0],
-            f"original peak {data.original.peak_amplitude:.2f}  effect peak {processed.peak_amplitude:.2f}  scale +/-{data.waveform_limit:.2f}",
+            f"same scale +/-{data.waveform_limit:.2f}  peaks {data.original.peak_amplitude:.2f} -> {processed.peak_amplitude:.2f}",
         )
-        plot_rect = rect.adjusted(54, 42, -18, -34)
-        self._draw_axis_line(painter, plot_rect, 0.5)
+        plot_rect = rect.adjusted(84, 42, -18, -34)
+        lane_gap = 8.0
+        lane_height = (plot_rect.height() - lane_gap) / 2.0
+        original_rect = QRectF(plot_rect.left(), plot_rect.top(), plot_rect.width(), lane_height)
+        effect_rect = QRectF(
+            plot_rect.left(),
+            original_rect.bottom() + lane_gap,
+            plot_rect.width(),
+            lane_height,
+        )
+
+        painter.fillRect(original_rect, QColor("#f8fafc"))
+        painter.fillRect(effect_rect, _with_alpha(color, 18))
+        self._draw_axis_line(painter, original_rect, 0.5)
+        self._draw_axis_line(painter, effect_rect, 0.5)
+        self._draw_waveform_lane_label(painter, rect, original_rect, "ORIGINAL", QColor("#64748b"))
+        self._draw_waveform_lane_label(painter, rect, effect_rect, "EFFECT", color)
         self._draw_series(
             painter,
-            plot_rect,
+            original_rect,
             data.original.waveform_times,
             data.original.waveform_amplitudes,
             -data.waveform_limit,
             data.waveform_limit,
-            _transparent("#64748b", 95),
+            _transparent("#64748b", 210),
             x_min=x_min,
             x_max=x_max,
-            width=1,
+            width=3,
         )
         self._draw_series(
             painter,
-            plot_rect,
+            effect_rect,
             processed.waveform_times,
             processed.waveform_amplitudes,
             -data.waveform_limit,
             data.waveform_limit,
-            _with_alpha(color, 190),
+            _with_alpha(color, 55),
             x_min=x_min,
             x_max=x_max,
-            width=2,
+            width=8,
         )
-        if data.processed is not None:
-            self._draw_series(
-                painter,
-                plot_rect,
-                processed.waveform_times,
-                data.difference_waveform_amplitudes,
-                -data.waveform_limit,
-                data.waveform_limit,
-                _transparent("#f97316", 165),
-                x_min=x_min,
-                x_max=x_max,
-                width=1,
-            )
+        self._draw_series(
+            painter,
+            effect_rect,
+            processed.waveform_times,
+            processed.waveform_amplitudes,
+            -data.waveform_limit,
+            data.waveform_limit,
+            _with_alpha(color, 235),
+            x_min=x_min,
+            x_max=x_max,
+            width=3,
+        )
         self._draw_playhead(painter, plot_rect, x_min=x_min, x_max=x_max, duration_seconds=data.duration_seconds)
         if self.waveform_zoom > 1.0:
             time_label = f"{x_min:.2f}-{x_max:.2f}s  zoom x{self.waveform_zoom:.0f}"
         else:
             time_label = "full clip"
-        self._draw_axis_labels(painter, rect, f"{time_label}  original blue-grey  effect colour  difference orange  gain x{data.display_gain:.1f}", "sound wave")
+        self._draw_axis_labels(painter, rect, f"{time_label}  aligned time + shared scale  gain x{data.display_gain:.1f}", "sound wave")
 
     def _draw_fft_comparison(self, painter, rect, data, processed, color):
         self._draw_panel_frame(
@@ -354,6 +368,12 @@ class AudioVisualisationWidget(QWidget):
         painter.setPen(QPen(QColor("#e2e8f0"), 1, Qt.PenStyle.DotLine))
         painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
 
+    def _draw_waveform_lane_label(self, painter, panel_rect, lane_rect, text, color):
+        label_rect = QRectF(panel_rect.left() + 10, lane_rect.top(), 68, lane_rect.height())
+        painter.setPen(color)
+        painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+        painter.drawText(label_rect, Qt.AlignmentFlag.AlignCenter, text)
+
     def _draw_playhead(self, painter, rect, x_min=0.0, x_max=1.0, duration_seconds=1.0):
         if self.playback_progress is None:
             return
@@ -423,7 +443,7 @@ class AudioVisualisationWidget(QWidget):
 
     def _waveform_plot_bounds(self):
         left, top, _gap, panel_width, panel_height = self._comparison_panel_geometry()
-        plot_left = left + 54
+        plot_left = left + 84
         plot_top = top + 42
         plot_right = left + panel_width - 18
         plot_bottom = top + panel_height - 34
