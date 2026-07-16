@@ -12,6 +12,7 @@ from audio_visualisation_widget import AudioVisualisationWidget
 
 
 APP_ICON_PATH = Path(__file__).resolve().parents[1] / "assets" / "voice_changer_icon.png"
+DESKTOP_FILE_NAME = "voicechanger"
 
 
 def _load_app_icon():
@@ -621,6 +622,8 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setApplicationName("Voice Changer Live")
+    app.setDesktopFileName(DESKTOP_FILE_NAME)
     app_icon = _load_app_icon()
     if app_icon is not None and hasattr(app, "setWindowIcon"):
         app.setWindowIcon(app_icon)

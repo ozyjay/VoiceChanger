@@ -760,6 +760,24 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_linux_launcher_matches_qt_desktop_identity(self):
+        launcher = ROOT / "assets" / "voicechanger.desktop"
+        launcher_text = launcher.read_text(encoding="utf-8")
+
+        self.assertIn("Name=Voice Changer Live", launcher_text)
+        self.assertIn("Icon=voicechanger", launcher_text)
+        self.assertIn("StartupWMClass=voicechanger", launcher_text)
+
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import DESKTOP_FILE_NAME
+
+            self.assertEqual(DESKTOP_FILE_NAME, launcher.stem)
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_teaching_explanation_panel_tracks_active_effect_chain(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))

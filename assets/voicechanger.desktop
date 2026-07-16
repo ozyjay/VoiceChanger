@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Voice Changer Live
+Comment=Record a voice clip and explore audio effects
+Exec=/home/jase/.local/bin/poetry run python src/main.py
+Path=/mnt/work/GitHubProjects/VoiceChanger
+Icon=voicechanger
+Terminal=false
+Categories=AudioVideo;Audio;
+StartupNotify=true
+StartupWMClass=voicechanger
