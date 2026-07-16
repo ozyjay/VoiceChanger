@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from time import monotonic
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
@@ -81,6 +82,8 @@ class MainWindow(QMainWindow):
         self.selected_effect_name = self._effect_chain_name()
         self.playback_timer = QTimer(self)
         self.playback_timer.timeout.connect(self._advance_playback)
+        self._playback_clock = monotonic
+        self._playback_started_at = None
         self.playback_elapsed_seconds = 0.0
         self.playback_duration_seconds = 0.0
         self.playback_ready_status = "Ready"
@@ -279,6 +282,7 @@ class MainWindow(QMainWindow):
         try:
             sd.stop()
             self.playback_timer.stop()
+            self._playback_started_at = None
             self.playback_elapsed_seconds = 0.0
             self.audio_data = None
             self.audio_data_processed = None
@@ -435,8 +439,9 @@ class MainWindow(QMainWindow):
             sd.stop()
             playback_audio = prepare_playback_audio(audio_data, samplerate=self.samplerate)
             sd.play(playback_audio, self.samplerate)
+            self._playback_started_at = self._playback_clock()
             self.playback_elapsed_seconds = 0.0
-            self.playback_duration_seconds = max(len(audio_data) / float(self.samplerate), 0.001)
+            self.playback_duration_seconds = max(len(playback_audio) / float(self.samplerate), 0.001)
             self.playback_ready_status = ready_status
             self.visualisation_widget.set_playback_progress(0.0)
             self.playback_timer.start(33)
@@ -445,14 +450,19 @@ class MainWindow(QMainWindow):
             print(f"Error playing audio: {e}")
             self._set_status("Audio playback failed")
             self.playback_timer.stop()
+            self._playback_started_at = None
             self._update_control_state()
 
     def _advance_playback(self):
-        self.playback_elapsed_seconds += 0.033
+        if self._playback_started_at is None:
+            return
+
+        self.playback_elapsed_seconds = max(0.0, self._playback_clock() - self._playback_started_at)
         progress = min(1.0, self.playback_elapsed_seconds / self.playback_duration_seconds)
         self.visualisation_widget.set_playback_progress(progress)
         if progress >= 1.0:
             self.playback_timer.stop()
+            self._playback_started_at = None
             self._set_status(self.playback_ready_status)
             self._update_control_state()
 
@@ -494,6 +504,7 @@ class MainWindow(QMainWindow):
     def _reset_for_next_visitor(self):
         sd.stop()
         self.playback_timer.stop()
+        self._playback_started_at = None
         self.recording_limit_timer.stop()
         self.recording_countdown_timer.stop()
         if self.is_recording:

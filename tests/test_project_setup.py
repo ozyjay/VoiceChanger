@@ -847,6 +847,8 @@ class ProjectSetupTests(unittest.TestCase):
             from main import MainWindow
 
             window = MainWindow()
+            clock_time = [100.0]
+            window._playback_clock = lambda: clock_time[0]
             window.audio_data = np.ones((8000, 1), dtype=np.float32) * 0.2
             window.process_audio("Robot")
 
@@ -864,7 +866,7 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.selected_effect_names, [])
             self.assertEqual(window.active_effect_deck, "Classic")
 
-            window.playback_elapsed_seconds = window.playback_duration_seconds
+            clock_time[0] += window.playback_duration_seconds
             window._advance_playback()
 
             self.assertFalse(window.playback_timer.isActive())
@@ -994,7 +996,7 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
-    def test_playback_timer_advances_visualisation_playhead_and_finishes(self):
+    def test_playback_timer_uses_elapsed_time_and_finishes(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
         try:
@@ -1004,19 +1006,23 @@ class ProjectSetupTests(unittest.TestCase):
             window = MainWindow()
             window.samplerate = 4
             window.audio_data = np.ones((4, 1), dtype=np.float32)
+            clock_time = [100.0]
+            window._playback_clock = lambda: clock_time[0]
 
             with redirect_stdout(StringIO()):
                 window.play_original()
+                clock_time[0] += 0.25
                 window._advance_playback()
 
-            self.assertGreater(window.visualisation_widget.playback_progress, 0.0)
+            self.assertEqual(window.visualisation_widget.playback_progress, 0.25)
 
             with redirect_stdout(StringIO()):
-                for _ in range(40):
-                    window._advance_playback()
+                clock_time[0] += 0.75
+                window._advance_playback()
 
             self.assertEqual(window.visualisation_widget.playback_progress, 1.0)
             self.assertFalse(window.playback_timer.isActive())
+            self.assertIsNone(window._playback_started_at)
             self.assertIn("Ready", window.status_label.text)
         finally:
             sys.path.remove(str(SRC))
