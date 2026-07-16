@@ -144,12 +144,16 @@ class FakeMainWindow(FakeWidget):
     def __init__(self):
         super().__init__()
         self.central_widget = None
+        self.window_icon = None
 
     def setGeometry(self, *args):
         self.geometry = args
 
     def setWindowTitle(self, title):
         self.title = title
+
+    def setWindowIcon(self, icon):
+        self.window_icon = icon
 
     def setCentralWidget(self, widget):
         self.central_widget = widget
@@ -202,6 +206,11 @@ class FakeTimer:
         return self.active
 
 
+class FakeIcon:
+    def __init__(self, path):
+        self.path = path
+
+
 def install_fake_modules():
     qtcore = types.ModuleType("PySide6.QtCore")
     qtcore.QPointF = object
@@ -215,6 +224,7 @@ def install_fake_modules():
     qtgui = types.ModuleType("PySide6.QtGui")
     qtgui.QColor = object
     qtgui.QFont = object
+    qtgui.QIcon = FakeIcon
     qtgui.QPainter = object
     qtgui.QPen = object
 
@@ -731,6 +741,22 @@ class ProjectSetupTests(unittest.TestCase):
             window.visualisation_widget.set_waveform_follow_enabled(True)
             self.assertTrue(window.follow_button.isChecked())
             self.assertEqual(window.follow_button.text(), "Follow: On")
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_main_window_sets_demo_icon(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import APP_ICON_PATH, MainWindow
+
+            window = MainWindow()
+
+            self.assertIsNotNone(window.window_icon)
+            self.assertEqual(window.window_icon.path, str(APP_ICON_PATH))
+            self.assertTrue(APP_ICON_PATH.exists())
+            self.assertEqual(APP_ICON_PATH.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
         finally:
             sys.path.remove(str(SRC))
 

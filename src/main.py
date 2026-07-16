@@ -1,11 +1,23 @@
 import sys
+from pathlib import Path
+
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QVBoxLayout
 import sounddevice as sd
 import numpy as np
 
 from audio_effects import EFFECT_NAMES, apply_effect, prepare_playback_audio
 from audio_visualisation_widget import AudioVisualisationWidget
+
+
+APP_ICON_PATH = Path(__file__).resolve().parents[1] / "assets" / "voice_changer_icon.png"
+
+
+def _load_app_icon():
+    if APP_ICON_PATH.exists():
+        return QIcon(str(APP_ICON_PATH))
+    return None
 
 
 EFFECT_CARD_NAMES = tuple(effect_name for effect_name in EFFECT_NAMES if effect_name != "Normal")
@@ -82,6 +94,9 @@ class MainWindow(QMainWindow):
     def initUI(self):
         self.setGeometry(100, 100, 1280, 820)
         self.setWindowTitle('Voice Changer Live')
+        app_icon = _load_app_icon()
+        if app_icon is not None:
+            self.setWindowIcon(app_icon)
         self.setStyleSheet(
             """
             QMainWindow { background: #111827; }
@@ -606,6 +621,9 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app_icon = _load_app_icon()
+    if app_icon is not None and hasattr(app, "setWindowIcon"):
+        app.setWindowIcon(app_icon)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
