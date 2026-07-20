@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
         self.is_recording = False
         self.samplerate = 44100
         self.input_devices = []
+        self.input_device_samplerates = {}
         self.selected_input_device_index = None
         self.active_effect_deck = "Classic"
         self.selected_effect_names = []
@@ -500,11 +501,13 @@ class MainWindow(QMainWindow):
             print(f"Error finding audio input devices: {error}", file=sys.stderr)
             devices = []
 
-        self.input_devices = [
-            (device_index, device["name"])
-            for device_index, device in enumerate(devices)
-            if device.get("max_input_channels", 0) > 0
-        ]
+        self.input_devices = []
+        self.input_device_samplerates = {}
+        for device_index, device in enumerate(devices):
+            if device.get("max_input_channels", 0) <= 0:
+                continue
+            self.input_devices.append((device_index, device["name"]))
+            self.input_device_samplerates[device_index] = self._device_samplerate(device)
         if not self.input_devices:
             self.audio_source_combo_box.addItem("No audio inputs found", None)
             self.audio_source_combo_box.setEnabled(False)
@@ -521,6 +524,14 @@ class MainWindow(QMainWindow):
 
         self.audio_source_combo_box.setCurrentIndex(selected_combo_index)
         self.selected_input_device_index = self.input_devices[selected_combo_index][0]
+        self.samplerate = self.input_device_samplerates[self.selected_input_device_index]
+
+    def _device_samplerate(self, device):
+        try:
+            samplerate = int(round(float(device["default_samplerate"])))
+        except (KeyError, TypeError, ValueError):
+            return 44100
+        return samplerate if samplerate > 0 else 44100
 
     def _default_input_device_index(self):
         try:
@@ -534,8 +545,12 @@ class MainWindow(QMainWindow):
         if device_index is None:
             return
         self.selected_input_device_index = int(device_index)
+        self.samplerate = self.input_device_samplerates[self.selected_input_device_index]
         if not self.is_recording:
-            self._set_status(f"Audio input selected: {self.audio_source_combo_box.currentText()}")
+            self._set_status(
+                f"Audio input selected: {self.audio_source_combo_box.currentText()} "
+                f"at {self.samplerate / 1000:g} kHz"
+            )
 
     def _toggle_waveform_follow(self):
         enabled = not self.visualisation_widget.waveform_follow_enabled

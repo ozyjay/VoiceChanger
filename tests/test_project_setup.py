@@ -264,8 +264,18 @@ def install_fake_modules():
     sounddevice.InputStream = FakeInputStream
     sounddevice.default = types.SimpleNamespace(device=(0, 2))
     sounddevice.query_devices = lambda: [
-        {"name": "Built-in microphone", "max_input_channels": 1, "max_output_channels": 0},
-        {"name": "Speakers", "max_input_channels": 0, "max_output_channels": 2},
+        {
+            "name": "Built-in microphone",
+            "max_input_channels": 1,
+            "max_output_channels": 0,
+            "default_samplerate": 44100.0,
+        },
+        {
+            "name": "Speakers",
+            "max_input_channels": 0,
+            "max_output_channels": 2,
+            "default_samplerate": 44100.0,
+        },
     ]
     sounddevice.play_calls = []
     sounddevice.stop_calls = 0
@@ -348,10 +358,10 @@ class ProjectSetupTests(unittest.TestCase):
         sounddevice = sys.modules["sounddevice"]
         sounddevice.default.device = (3, 2)
         sounddevice.query_devices = lambda: [
-            {"name": "Laptop mic", "max_input_channels": 1},
+            {"name": "Laptop mic", "max_input_channels": 1, "default_samplerate": 44100.0},
             {"name": "HDMI output", "max_input_channels": 0},
             {"name": "USB speakers", "max_input_channels": 0},
-            {"name": "USB microphone", "max_input_channels": 2},
+            {"name": "USB microphone", "max_input_channels": 2, "default_samplerate": 48000.0},
         ]
         sys.path.insert(0, str(SRC))
         try:
@@ -363,14 +373,22 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.input_devices, [(0, "Laptop mic"), (3, "USB microphone")])
             self.assertEqual(window.audio_source_combo_box.items, ["Laptop mic (device 0)", "USB microphone (device 3)"])
             self.assertEqual(window.selected_input_device_index, 3)
+            self.assertEqual(window.samplerate, 48000)
 
-            window.audio_source_combo_box.setCurrentIndex(0)
             with redirect_stdout(StringIO()):
                 window.start_recording()
 
-            self.assertEqual(window.selected_input_device_index, 0)
-            self.assertEqual(window.recording_stream.kwargs["device"], 0)
+            self.assertEqual(window.recording_stream.kwargs["device"], 3)
+            self.assertEqual(window.recording_stream.kwargs["samplerate"], 48000)
             self.assertFalse(window.audio_source_combo_box.isEnabled())
+
+            with redirect_stdout(StringIO()):
+                window.start_recording()
+            window.audio_source_combo_box.setCurrentIndex(0)
+
+            self.assertEqual(window.selected_input_device_index, 0)
+            self.assertEqual(window.samplerate, 44100)
+            self.assertIn("44.1 kHz", window.status_label.text)
         finally:
             sys.path.remove(str(SRC))
 
