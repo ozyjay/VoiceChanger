@@ -4,7 +4,7 @@ from time import monotonic
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QComboBox, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QVBoxLayout
 import sounddevice as sd
 import numpy as np
 
@@ -77,6 +77,8 @@ class MainWindow(QMainWindow):
         self.audio_data_processed = None
         self.is_recording = False
         self.samplerate = 44100
+        self.input_devices = []
+        self.selected_input_device_index = None
         self.active_effect_deck = "Classic"
         self.selected_effect_names = []
         self.selected_effect_name = self._effect_chain_name()
@@ -172,6 +174,23 @@ class MainWindow(QMainWindow):
             "padding: 6px 10px; font-size: 14px; font-weight: 700; color: #f8fafc;"
         )
         info_labels_layout.addWidget(self.explanation_label, 2)
+
+        audio_source_layout = QHBoxLayout()
+        audio_source_layout.setSpacing(8)
+        self.audio_source_label = QLabel("Audio input:")
+        self.audio_source_label.setObjectName("audioSourceLabel")
+        self.audio_source_label.setStyleSheet("font-size: 14px; font-weight: 800; color: #cbd5e1;")
+        self.audio_source_combo_box = QComboBox()
+        self.audio_source_combo_box.setObjectName("audioSourceComboBox")
+        self.audio_source_combo_box.setStyleSheet(
+            "background: #0f172a; border: 2px solid #475569; border-radius: 7px; "
+            "color: #f8fafc; font-size: 14px; min-height: 32px; padding: 3px 8px;"
+        )
+        audio_source_layout.addWidget(self.audio_source_label)
+        audio_source_layout.addWidget(self.audio_source_combo_box, 1)
+        top_info_layout.addLayout(audio_source_layout)
+        self._populate_audio_sources()
+        self.audio_source_combo_box.currentIndexChanged.connect(self._audio_source_selected)
 
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(10)
@@ -290,7 +309,12 @@ class MainWindow(QMainWindow):
             self._set_status(f"Recording... {self.recording_limit_seconds} seconds left")
 
             self.recording_callback = self._record_audio_callback
-            self.recording_stream = sd.InputStream(samplerate=self.samplerate, channels=1, callback=self.recording_callback)
+            self.recording_stream = sd.InputStream(
+                device=self.selected_input_device_index,
+                samplerate=self.samplerate,
+                channels=1,
+                callback=self.recording_callback,
+            )
             self.recording_stream.start()
 
             self.is_recording = True
@@ -469,6 +493,50 @@ class MainWindow(QMainWindow):
     def _set_status(self, text):
         self.status_label.setText(text)
 
+    def _populate_audio_sources(self):
+        try:
+            devices = sd.query_devices()
+        except Exception as error:
+            print(f"Error finding audio input devices: {error}", file=sys.stderr)
+            devices = []
+
+        self.input_devices = [
+            (device_index, device["name"])
+            for device_index, device in enumerate(devices)
+            if device.get("max_input_channels", 0) > 0
+        ]
+        if not self.input_devices:
+            self.audio_source_combo_box.addItem("No audio inputs found", None)
+            self.audio_source_combo_box.setEnabled(False)
+            self.selected_input_device_index = None
+            self._set_status("No audio input found. Connect a microphone and restart")
+            return
+
+        default_input_index = self._default_input_device_index()
+        selected_combo_index = 0
+        for combo_index, (device_index, device_name) in enumerate(self.input_devices):
+            self.audio_source_combo_box.addItem(f"{device_name} (device {device_index})", device_index)
+            if device_index == default_input_index:
+                selected_combo_index = combo_index
+
+        self.audio_source_combo_box.setCurrentIndex(selected_combo_index)
+        self.selected_input_device_index = self.input_devices[selected_combo_index][0]
+
+    def _default_input_device_index(self):
+        try:
+            default_device = sd.default.device
+            return int(default_device[0])
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return None
+
+    def _audio_source_selected(self, combo_index):
+        device_index = self.audio_source_combo_box.itemData(combo_index)
+        if device_index is None:
+            return
+        self.selected_input_device_index = int(device_index)
+        if not self.is_recording:
+            self._set_status(f"Audio input selected: {self.audio_source_combo_box.currentText()}")
+
     def _toggle_waveform_follow(self):
         enabled = not self.visualisation_widget.waveform_follow_enabled
         self.visualisation_widget.set_waveform_follow_enabled(enabled)
@@ -494,7 +562,9 @@ class MainWindow(QMainWindow):
         can_change_effects = not self.is_recording and not self._is_playing()
         self.play_original_button.setEnabled(can_play)
         self.play_filtered_button.setEnabled(can_play)
-        self.record_button.setEnabled(True)
+        has_input_device = self.selected_input_device_index is not None
+        self.record_button.setEnabled(has_input_device or self.is_recording)
+        self.audio_source_combo_box.setEnabled(has_input_device and not self.is_recording)
         self.reset_button.setEnabled(True)
         for button in self.effect_buttons.values():
             button.setEnabled(can_change_effects)

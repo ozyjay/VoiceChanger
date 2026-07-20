@@ -87,13 +87,27 @@ class FakeComboBox(FakeWidget):
     def __init__(self):
         super().__init__()
         self.items = []
+        self.item_data = []
+        self.current_index = -1
         self.currentIndexChanged = FakeSignal()
 
-    def addItem(self, text):
+    def addItem(self, text, user_data=None):
         self.items.append(text)
+        self.item_data.append(user_data)
+        if self.current_index == -1:
+            self.current_index = 0
+
+    def setCurrentIndex(self, index):
+        self.current_index = index
+        self.currentIndexChanged.emit(index)
+
+    def itemData(self, index):
+        return self.item_data[index]
 
     def currentText(self):
-        return self.items[0] if self.items else ""
+        if 0 <= self.current_index < len(self.items):
+            return self.items[self.current_index]
+        return ""
 
 
 class FakeLabel(FakeWidget):
@@ -175,6 +189,8 @@ class FakeMainWindow(FakeWidget):
 
 class FakeInputStream:
     def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
         self.started = False
         self.stopped = False
         self.closed = False
@@ -246,6 +262,11 @@ def install_fake_modules():
 
     sounddevice = types.ModuleType("sounddevice")
     sounddevice.InputStream = FakeInputStream
+    sounddevice.default = types.SimpleNamespace(device=(0, 2))
+    sounddevice.query_devices = lambda: [
+        {"name": "Built-in microphone", "max_input_channels": 1, "max_output_channels": 0},
+        {"name": "Speakers", "max_input_channels": 0, "max_output_channels": 2},
+    ]
     sounddevice.play_calls = []
     sounddevice.stop_calls = 0
     sounddevice.wait_calls = 0
@@ -310,6 +331,7 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertTrue(window.is_recording)
             self.assertEqual(window.record_button.text(), "Stop")
             self.assertTrue(window.recording_stream.started)
+            self.assertEqual(window.recording_stream.kwargs["device"], 0)
 
             with redirect_stdout(StringIO()):
                 window.start_recording()
@@ -318,6 +340,56 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertEqual(window.record_button.text(), "Record")
             self.assertTrue(window.recording_stream.stopped)
             self.assertTrue(window.recording_stream.closed)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_audio_source_selector_lists_inputs_and_records_from_selection(self):
+        install_fake_modules()
+        sounddevice = sys.modules["sounddevice"]
+        sounddevice.default.device = (3, 2)
+        sounddevice.query_devices = lambda: [
+            {"name": "Laptop mic", "max_input_channels": 1},
+            {"name": "HDMI output", "max_input_channels": 0},
+            {"name": "USB speakers", "max_input_channels": 0},
+            {"name": "USB microphone", "max_input_channels": 2},
+        ]
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.input_devices, [(0, "Laptop mic"), (3, "USB microphone")])
+            self.assertEqual(window.audio_source_combo_box.items, ["Laptop mic (device 0)", "USB microphone (device 3)"])
+            self.assertEqual(window.selected_input_device_index, 3)
+
+            window.audio_source_combo_box.setCurrentIndex(0)
+            with redirect_stdout(StringIO()):
+                window.start_recording()
+
+            self.assertEqual(window.selected_input_device_index, 0)
+            self.assertEqual(window.recording_stream.kwargs["device"], 0)
+            self.assertFalse(window.audio_source_combo_box.isEnabled())
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_no_audio_inputs_disables_recording_with_clear_status(self):
+        install_fake_modules()
+        sys.modules["sounddevice"].query_devices = lambda: [
+            {"name": "Speakers", "max_input_channels": 0},
+        ]
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+
+            self.assertEqual(window.audio_source_combo_box.items, ["No audio inputs found"])
+            self.assertFalse(window.audio_source_combo_box.isEnabled())
+            self.assertFalse(window.record_button.isEnabled())
+            self.assertIn("No audio input found", window.status_label.text)
         finally:
             sys.path.remove(str(SRC))
 

@@ -7,6 +7,7 @@ Local, offline PySide6 Open Day demo for recording, transforming, playing, and v
 The app is now a working `Voice Changer Live` demo with a playful pedalboard-style interface:
 
 - Record a short voice clip from the microphone.
+- Select the microphone or other audio input used for recording.
 - Automatically stop recording after about 5 seconds for reliable public demos.
 - Play the original clip.
 - Toggle one or more effect pedals from the Classic and Wild decks.
@@ -78,7 +79,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1
 1. Run setup with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/setup.ps1`.
 2. Run tests with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1`.
 3. Run the app with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1`.
-4. Ask the visitor to press `Record` and say a short phrase. Recording auto-stops after about 5 seconds.
+4. Select the intended audio input, then ask the visitor to press `Record` and say a short phrase. Recording auto-stops after about 5 seconds.
 5. Toggle one or more bright effect pedals. Use `Classic` or `Wild` to switch decks.
 6. Use `Play Original` and the processed playback button to compare the voices.
 7. Point out the `ACTIVE CHAIN`, `What changed?` panel, waveform, and FFT comparison.
