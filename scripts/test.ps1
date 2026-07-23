@@ -23,5 +23,5 @@ for path in sorted(Path("src").glob("*.py")):
 '@
 
 Invoke-CheckedNative { poetry run python -m unittest discover -s tests -v }
-Invoke-CheckedNative { poetry run python -c $compileSource }
+Invoke-CheckedNative { $compileSource | poetry run python - }
 Invoke-CheckedNative { poetry check }

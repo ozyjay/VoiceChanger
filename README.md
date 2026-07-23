@@ -38,7 +38,7 @@ tests/
 
 ## Requirements
 
-- Python 3.12.13 via pyenv
+- Python 3.12.10 via pyenv
 - Poetry
 - PySide6
 - NumPy
@@ -49,8 +49,8 @@ The project has a standard `pyproject.toml`, a `poetry.lock` file, and a `.pytho
 Use the pinned Python version:
 
 ```powershell
-pyenv install 3.12.13
-pyenv local 3.12.13
+pyenv install 3.12.10
+pyenv local 3.12.10
 python --version
 ```
 
