@@ -33,6 +33,9 @@ class FakeWidget:
         self.enabled = True
         self.style_sheet = ""
         self.fixed_width = None
+        self.fixed_height = None
+        self.word_wrap = False
+        self.size_policy = None
 
     def setObjectName(self, name):
         self._object_name = name
@@ -45,6 +48,15 @@ class FakeWidget:
 
     def setFixedWidth(self, width):
         self.fixed_width = width
+
+    def setFixedHeight(self, height):
+        self.fixed_height = height
+
+    def setWordWrap(self, enabled):
+        self.word_wrap = bool(enabled)
+
+    def setSizePolicy(self, horizontal, vertical):
+        self.size_policy = (horizontal, vertical)
 
     def setStyleSheet(self, style_sheet):
         self.style_sheet = style_sheet
@@ -227,6 +239,10 @@ class FakeIcon:
         self.path = path
 
 
+class FakeSizePolicy:
+    Policy = types.SimpleNamespace(Ignored=0, Fixed=1)
+
+
 def install_fake_modules():
     qtcore = types.ModuleType("PySide6.QtCore")
     qtcore.QPointF = object
@@ -252,6 +268,7 @@ def install_fake_modules():
     qtwidgets.QLabel = FakeLabel
     qtwidgets.QMainWindow = FakeMainWindow
     qtwidgets.QPushButton = FakeButton
+    qtwidgets.QSizePolicy = FakeSizePolicy
     qtwidgets.QVBoxLayout = FakeLayout
     qtwidgets.QWidget = FakeContainer
 
@@ -663,7 +680,7 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertNotIn("TONE", echo_button.text())
             self.assertNotIn("MIX", echo_button.text())
             self.assertNotIn("FOOTSWITCH", echo_button.text())
-            self.assertIn("min-height: 72px", echo_button.style_sheet)
+            self.assertEqual(echo_button.fixed_height, 84)
             self.assertIn("border-radius: 14px", echo_button.style_sheet)
 
             with redirect_stdout(StringIO()):
@@ -689,7 +706,30 @@ class ProjectSetupTests(unittest.TestCase):
             self.assertGreaterEqual(window.visualisation_widget.minimum_height, 500)
             self.assertLessEqual(window.visualisation_widget.minimum_height, 560)
             for button in window.effect_buttons.values():
-                self.assertIn("min-height: 72px", button.style_sheet)
+                self.assertEqual(button.fixed_height, 84)
+        finally:
+            sys.path.remove(str(SRC))
+
+    def test_dynamic_effect_text_cannot_change_layout_constraints(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            sys.modules.pop("audio_visualisation_widget", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window._set_active_effect_deck("Wild")
+            with redirect_stdout(StringIO()):
+                window.effect_selected("Monster")
+                window.effect_selected("Underwater")
+
+            for label in (window.status_label, window.active_chain_label, window.explanation_label):
+                self.assertTrue(label.word_wrap)
+                self.assertEqual(label.fixed_height, 54)
+                self.assertEqual(label.size_policy, (0, 1))
+            for button in window.effect_button_slots:
+                self.assertEqual(button.fixed_height, 84)
         finally:
             sys.path.remove(str(SRC))
 

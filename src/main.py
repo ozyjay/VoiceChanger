@@ -4,7 +4,17 @@ from time import monotonic
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QComboBox, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QWidget,
+    QVBoxLayout,
+)
 import sounddevice as sd
 import numpy as np
 
@@ -158,6 +168,7 @@ class MainWindow(QMainWindow):
             "background: #0f172a; border: 2px solid #334155; border-radius: 8px; "
             "padding: 5px 10px; font-size: 15px; font-weight: 700; color: #cbd5e1;"
         )
+        self._stabilise_info_label(self.status_label)
         info_labels_layout.addWidget(self.status_label, 1)
 
         self.active_chain_label = QLabel(self._effect_chain_display())
@@ -166,6 +177,7 @@ class MainWindow(QMainWindow):
             "background: #020617; border: 2px solid #38bdf8; border-radius: 8px; "
             "padding: 6px 10px; font-size: 16px; font-weight: 900; color: #e0f2fe;"
         )
+        self._stabilise_info_label(self.active_chain_label)
         info_labels_layout.addWidget(self.active_chain_label, 1)
 
         self.explanation_label = QLabel(self._effect_explanation())
@@ -174,6 +186,7 @@ class MainWindow(QMainWindow):
             "background: #172033; border: 2px solid #475569; border-radius: 8px; "
             "padding: 6px 10px; font-size: 14px; font-weight: 700; color: #f8fafc;"
         )
+        self._stabilise_info_label(self.explanation_label)
         info_labels_layout.addWidget(self.explanation_label, 2)
 
         audio_source_layout = QHBoxLayout()
@@ -248,6 +261,7 @@ class MainWindow(QMainWindow):
         for index in range(len(EFFECT_DECKS["Classic"])):
             button = QPushButton()
             button.setCheckable(True)
+            button.setFixedHeight(84)
             button.clicked.connect(lambda _checked=False, slot_index=index: self._effect_slot_selected(slot_index))
             self.effect_button_slots.append(button)
             effects_layout.addWidget(button)
@@ -292,6 +306,11 @@ class MainWindow(QMainWindow):
         visual_pane_layout.addWidget(self.visualisation_widget, 1)
         self._refresh_effect_cards()
         self._update_control_state()
+
+    def _stabilise_info_label(self, label):
+        label.setWordWrap(True)
+        label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        label.setFixedHeight(54)
 
     def start_recording(self):
         if self.is_recording:
@@ -634,7 +653,7 @@ class MainWindow(QMainWindow):
                 f"background: {background}; border: {border_width}px solid {color}; "
                 f"border-top: 5px solid {accent_top}; border-radius: 14px; "
                 f"color: {text_color}; font-size: 13px; font-weight: 900; "
-                f"min-height: 72px; padding: 6px 8px;"
+                f"padding: 6px 8px;"
             )
         for deck_name, button in self.effect_deck_buttons.items():
             selected = deck_name == self.active_effect_deck
