@@ -1,0 +1,9 @@
+{
+    "terminal.integrated.profiles.windows": {
+        "pwsh": {
+            "path": "pwsh.exe",
+            "icon": "terminal-powershell"
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "pwsh"
+}
