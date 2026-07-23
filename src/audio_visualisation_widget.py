@@ -80,6 +80,10 @@ class AudioVisualisationWidget(QWidget):
         self.playback_progress = max(0.0, min(1.0, float(progress)))
         self.update()
 
+    def clear_playback_progress(self):
+        self.playback_progress = None
+        self.update()
+
     def pan_waveform_by_pixels(self, delta_pixels, viewport_width):
         if self.visualisation_data is None or self.waveform_zoom <= 1.0:
             return

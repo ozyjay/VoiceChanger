@@ -221,6 +221,13 @@ class MainWindow(QMainWindow):
         self.play_filtered_button = QPushButton(self._effect_play_label())
         self.play_filtered_button.setObjectName('playFilteredButton')
         self.play_filtered_button.clicked.connect(self.play_filtered)
+        self.stop_button = QPushButton('Stop')
+        self.stop_button.setObjectName('stopButton')
+        self.stop_button.setStyleSheet(
+            "background: #b45309; border-color: #fbbf24; color: #ffffff; "
+            "font-size: 18px; min-height: 40px;"
+        )
+        self.stop_button.clicked.connect(self.stop_playback)
         self.reset_button = QPushButton('Reset / Next Visitor')
         self.reset_button.setObjectName('resetButton')
         self.reset_button.clicked.connect(self._reset_for_next_visitor)
@@ -228,6 +235,7 @@ class MainWindow(QMainWindow):
         controls_layout.addWidget(self.record_button)
         controls_layout.addWidget(self.play_original_button)
         controls_layout.addWidget(self.play_filtered_button)
+        controls_layout.addWidget(self.stop_button)
         controls_layout.addWidget(self.reset_button)
         top_info_layout.addLayout(controls_layout)
 
@@ -510,6 +518,19 @@ class MainWindow(QMainWindow):
             self._set_status(self.playback_ready_status)
             self._update_control_state()
 
+    def stop_playback(self):
+        if not self._is_playing():
+            return
+
+        sd.stop()
+        self.playback_timer.stop()
+        self._playback_started_at = None
+        self.playback_elapsed_seconds = 0.0
+        self.playback_duration_seconds = 0.0
+        self.visualisation_widget.clear_playback_progress()
+        self._set_status(self.playback_ready_status)
+        self._update_control_state()
+
     def _set_status(self, text):
         self.status_label.setText(text)
 
@@ -596,6 +617,7 @@ class MainWindow(QMainWindow):
         can_change_effects = not self.is_recording and not self._is_playing()
         self.play_original_button.setEnabled(can_play)
         self.play_filtered_button.setEnabled(can_play)
+        self.stop_button.setEnabled(self._is_playing())
         has_input_device = self.selected_input_device_index is not None
         self.record_button.setEnabled(has_input_device or self.is_recording)
         self.audio_source_combo_box.setEnabled(has_input_device and not self.is_recording)

@@ -1106,6 +1106,39 @@ class ProjectSetupTests(unittest.TestCase):
         finally:
             sys.path.remove(str(SRC))
 
+    def test_stop_button_stops_playback_and_restores_ready_state(self):
+        install_fake_modules()
+        sys.path.insert(0, str(SRC))
+        try:
+            sys.modules.pop("main", None)
+            from main import MainWindow
+
+            window = MainWindow()
+            window.audio_data = np.ones((8000, 1), dtype=np.float32) * 0.2
+            window._update_control_state()
+
+            self.assertEqual(window.stop_button.text(), "Stop")
+            self.assertFalse(window.stop_button.isEnabled())
+
+            with redirect_stdout(StringIO()):
+                window.play_original()
+
+            self.assertTrue(window.stop_button.isEnabled())
+            self.assertTrue(window.playback_timer.isActive())
+            self.assertEqual(window.visualisation_widget.playback_progress, 0.0)
+
+            window.stop_button.clicked.emit()
+
+            sounddevice = sys.modules["sounddevice"]
+            self.assertEqual(sounddevice.stop_calls, 2)
+            self.assertFalse(window.stop_button.isEnabled())
+            self.assertFalse(window.playback_timer.isActive())
+            self.assertIsNone(window._playback_started_at)
+            self.assertIsNone(window.visualisation_widget.playback_progress)
+            self.assertEqual(window.status_label.text, "Ready: Normal is selected")
+        finally:
+            sys.path.remove(str(SRC))
+
     def test_playback_sends_limited_audio_to_output_device(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))
