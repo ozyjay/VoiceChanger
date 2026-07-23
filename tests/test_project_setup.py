@@ -352,7 +352,8 @@ class ProjectSetupTests(unittest.TestCase):
 
         spec_text = (ROOT / "VoiceChanger.spec").read_text(encoding="utf-8")
         self.assertIn('["src/main.py"]', spec_text)
-        self.assertIn('("assets/voice_changer_icon.png", "assets")', spec_text)
+        self.assertIn('("assets/voice_changer_app_icon.png", "assets")', spec_text)
+        self.assertIn('icon=["assets/voice_changer_app_icon.ico"]', spec_text)
         self.assertIn('name="VoiceChanger"', spec_text)
         self.assertIn("console=False", spec_text)
 

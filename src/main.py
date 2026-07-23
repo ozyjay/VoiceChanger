@@ -22,7 +22,7 @@ from audio_effects import EFFECT_NAMES, apply_effect, prepare_playback_audio
 from audio_visualisation_widget import AudioVisualisationWidget
 
 
-APP_ICON_PATH = Path(__file__).resolve().parents[1] / "assets" / "voice_changer_icon.png"
+APP_ICON_PATH = Path(__file__).resolve().parents[1] / "assets" / "voice_changer_app_icon.png"
 DESKTOP_FILE_NAME = "voicechanger"
 
 
