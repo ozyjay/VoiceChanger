@@ -74,6 +74,22 @@ Run the GUI:
 pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/run.ps1
 ```
 
+Build a Windows installer:
+
+1. Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), or run:
+
+   ```powershell
+   winget install --id JRSoftware.InnoSetup --exact
+   ```
+
+2. Build the application bundle and setup executable:
+
+   ```powershell
+   pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-installer.ps1
+   ```
+
+The versioned installer is written to `dist/installer/`. It installs for the current Windows user, adds a Start Menu shortcut, offers an optional desktop shortcut, and includes an uninstaller.
+
 ## Demo Operator Flow
 
 1. Run setup with `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/setup.ps1`.

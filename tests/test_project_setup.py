@@ -344,6 +344,27 @@ class ProjectSetupTests(unittest.TestCase):
         self.assertTrue(any(dep.startswith("sounddevice") for dep in dependencies))
         self.assertFalse(any(dep.startswith("mpllib") for dep in dependencies))
 
+    def test_windows_installer_build_is_reproducible(self):
+        with (ROOT / "pyproject.toml").open("rb") as pyproject:
+            metadata = tomllib.load(pyproject)
+
+        self.assertTrue(any(dep.startswith("pyinstaller") for dep in metadata["dependency-groups"]["dev"]))
+
+        spec_text = (ROOT / "VoiceChanger.spec").read_text(encoding="utf-8")
+        self.assertIn('["src/main.py"]', spec_text)
+        self.assertIn('("assets/voice_changer_icon.png", "assets")', spec_text)
+        self.assertIn('name="VoiceChanger"', spec_text)
+        self.assertIn("console=False", spec_text)
+
+        installer_text = (ROOT / "installer" / "VoiceChanger.iss").read_text(encoding="utf-8")
+        self.assertIn(r'Source: "..\dist\VoiceChanger\*"', installer_text)
+        self.assertIn("PrivilegesRequired=lowest", installer_text)
+        self.assertIn("UninstallDisplayIcon=", installer_text)
+
+        build_script = (ROOT / "scripts" / "build-installer.ps1").read_text(encoding="utf-8")
+        self.assertIn("poetry run pyinstaller", build_script)
+        self.assertIn("JRSoftware.InnoSetup", build_script)
+
     def test_record_button_toggles_recording_without_lookup_failure(self):
         install_fake_modules()
         sys.path.insert(0, str(SRC))

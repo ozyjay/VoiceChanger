@@ -10,5 +10,10 @@ dependencies = [
     "sounddevice",
 ]
 
+[dependency-groups]
+dev = [
+    "pyinstaller>=6,<7",
+]
+
 [tool.poetry]
 package-mode = false
